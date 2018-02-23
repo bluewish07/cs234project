@@ -1,0 +1,5 @@
+*.egg-info/
+*.pyc
+*/*.pyc
+*.DS_Store
+gym/
