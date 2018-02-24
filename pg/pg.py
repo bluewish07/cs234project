@@ -1,18 +1,14 @@
 # -*- coding: UTF-8 -*-
 
 import os
-import sys
-import logging
-import time
+
+import gym
 import numpy as np
 import tensorflow as tf
-#import gym
-import scipy.signal
-import os
-import time
-import inspect
-from utils.general import get_logger, Progbar, export_plot
 from config import config
+from utils.general import get_logger, export_plot
+
+
 #import logz
 
 def build_mlp(
@@ -88,9 +84,6 @@ class PG(object):
     self.action_dim = self.env.action_space.n if self.discrete else self.env.action_space.shape[0]
   
     self.lr = self.config.learning_rate
-  
-    # build model
-    self.build()
 
 
 ############### Building the model graph ####################
@@ -267,75 +260,23 @@ class PG(object):
 
 #################### Running the model ######################
   
-  def initialize(self):
+  def initialize(self, session=None):
     """
     Assumes the graph has been constructed (have called self.build())
     Creates a tf Session and run initializer of variables
 
     You don't have to change or use anything here.
     """
-    # create tf session
-    self.sess = tf.Session()
+    # create tf session if not given
+    if session is None:
+      self.sess = tf.Session()
+    else:
+      self.sess = session
     # tensorboard stuff
     self.add_summary()
     # initiliaze all variables
     init = tf.global_variables_initializer()
     self.sess.run(init)
-
-
-  def sample_path(self, env, num_episodes = None):
-    """
-    Sample path for the environment.
-  
-    Args:
-            num_episodes:   the number of episodes to be sampled 
-              if none, sample one batch (size indicated by config file)
-    Returns:
-        paths: a list of paths. Each path in paths is a dictionary with
-            path["observation"] a numpy array of ordered observations in the path
-            path["actions"] a numpy array of the corresponding actions in the path
-            path["reward"] a numpy array of the corresponding rewards in the path
-        total_rewards: the sum of all rewards encountered during this "path"
-
-    You do not have to implement anything in this function, but you will need to
-    understand what it returns, and it is worthwhile to look over the code
-    just so you understand how we are taking actions in the environment
-    and generating batches to train on.
-    """
-    episode = 0
-    episode_rewards = []
-    paths = []
-    t = 0
-  
-    while (num_episodes or t < self.config.batch_size):
-      state = env.reset()
-      states, actions, rewards = [], [], []
-      episode_reward = 0
-  
-      for step in range(self.config.max_ep_len):
-        states.append(state)
-        action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder : states[-1][None]})[0]
-        # TODO: here we need to modify the sample_path method so that we could accomodate a list of actions, rewards and observations
-        state, reward, done, info = env.step(action)
-        actions.append(action)
-        rewards.append(reward)
-        episode_reward += reward
-        t += 1
-        if (done or step == self.config.max_ep_len-1):
-          episode_rewards.append(episode_reward)  
-          break
-        if (not num_episodes) and t == self.config.batch_size:
-          break
-  
-      path = {"observation" : np.array(states), 
-                      "reward" : np.array(rewards), 
-                      "action" : np.array(actions)}
-      paths.append(path)
-      episode += 1
-      if num_episodes and episode >= num_episodes:
-        break        
-  
-    return paths, episode_rewards
   
   
   def get_returns(self, paths):
@@ -419,8 +360,107 @@ class PG(object):
     pass # TODO
     #######################################################
     #########          END YOUR CODE.          ############
-  
-  
+
+  def get_sampled_action(self, observation):
+    """
+    Run self.sample_ation op
+
+    :param observation: single observation to run self.sampled_action with
+    :return: action
+    """
+    batch = tf.expand_dims(observation, 0)
+    action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder: batch})[0]
+    return action
+
+  def train_for_batch(self, paths):
+    observations = np.concatenate([path["observation"] for path in paths])
+    actions = np.concatenate([path["action"] for path in paths])
+    rewards = np.concatenate([path["reward"] for path in paths])
+    # compute Q-val estimates (discounted future returns) for each time step
+    returns = self.get_returns(paths)
+    advantages = self.calculate_advantage(returns, observations)
+
+    # run training operations
+    if self.config.use_baseline:
+      self.update_baseline(returns, observations)
+    self.sess.run(self.train_op, feed_dict={
+      self.observation_placeholder: observations,
+      self.action_placeholder: actions,
+      self.advantage_placeholder: advantages})
+
+    # compute reward statistics for this batch and log
+    total_rewards = []
+    for path in paths:
+      path_rewards = path["reward"]
+      total = 0
+      for r in path_rewards:
+        total += r
+      total_rewards.append(total)
+
+    avg_reward = np.mean(total_rewards)
+    sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
+    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    self.logger.info(msg)
+
+    self.env.render()
+
+
+##################### For running/training a single PG model only #######################
+
+  def sample_path(self, env, num_episodes=None):
+    """
+    Sample path for the environment.
+
+    Args:
+            num_episodes:   the number of episodes to be sampled
+              if none, sample one batch (size indicated by config file)
+    Returns:
+        paths: a list of paths. Each path in paths is a dictionary with
+            path["observation"] a numpy array of ordered observations in the path
+            path["actions"] a numpy array of the corresponding actions in the path
+            path["reward"] a numpy array of the corresponding rewards in the path
+        total_rewards: the sum of all rewards encountered during this "path"
+
+    You do not have to implement anything in this function, but you will need to
+    understand what it returns, and it is worthwhile to look over the code
+    just so you understand how we are taking actions in the environment
+    and generating batches to train on.
+    """
+    episode = 0
+    episode_rewards = []
+    paths = []
+    t = 0
+
+    while (num_episodes or t < self.config.batch_size):
+      state = env.reset()
+      states, actions, rewards = [], [], []
+      episode_reward = 0
+
+      for step in range(self.config.max_ep_len):
+        states.append(state)
+        action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder: states[-1][None]})[0]
+        # TODO: here we need to modify the sample_path method so that we could accomodate a list of actions, rewards and observations
+        state, reward, done, info = env.step(action)
+        actions.append(action)
+        rewards.append(reward)
+        episode_reward += reward
+        t += 1
+        if (done or step == self.config.max_ep_len - 1):
+          episode_rewards.append(episode_reward)
+          break
+        if (not num_episodes) and t == self.config.batch_size:
+          break
+
+      path = {"observation": np.array(states),
+              "reward": np.array(rewards),
+              "action": np.array(actions)}
+      paths.append(path)
+      episode += 1
+      if num_episodes and episode >= num_episodes:
+        break
+
+    return paths, episode_rewards
+
   def train(self):
     """
     Performs training
@@ -430,7 +470,6 @@ class PG(object):
     """
     last_eval = 0 
     last_record = 0
-    scores_eval = []
     
     self.init_averages()
     scores_eval = [] # list of scores computed at iteration time
@@ -495,6 +534,8 @@ class PG(object):
     """
     Apply procedures of training for a PG.
     """
+    # build model
+    self.build()
     # initialize
     self.initialize()
     # record one game at the beginning
@@ -548,7 +589,7 @@ class PG(object):
      #env = gym.wrappers.Monitor(env, self.config.record_path, video_callable=lambda x: True, resume=True)
      #self.evaluate(env, 1)
 
-
+#TODO: summary stuff might need to be consolidated and moved to multi_agent_pg
   def record_summary(self, t):
     """
     Add summary to tfboard
