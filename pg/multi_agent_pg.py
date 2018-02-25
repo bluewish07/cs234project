@@ -34,7 +34,7 @@ class MultiAgentPG(object):
     # create n PG object for n agents
     agent_networks = []
     for i in range(env.n):
-      agent_networks.append(PG(env, logger=logger))
+      agent_networks.append(PG(env, configuration=self.config, logger=logger))
 
     self.agent_networks = agent_networks
 
@@ -112,7 +112,7 @@ class MultiAgentPG(object):
       for i in self.env.n:
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agent_networks[i]
-        agent_net.train_for_batch(paths_n[i])
+        agent_net.train_for_batch_paths(paths_n[i])
 
     self.logger.info("- Training all done.")
 

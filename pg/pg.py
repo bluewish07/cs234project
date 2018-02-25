@@ -7,53 +7,15 @@ import numpy as np
 import tensorflow as tf
 from config import config
 from utils.general import get_logger, export_plot
+from utils.network import build_mlp
 
-
-#import logz
-
-def build_mlp(
-          mlp_input, 
-          output_size,
-          scope, 
-          n_layers=config.n_layers, 
-          size=config.layer_size, 
-          output_activation=None):
-  '''
-  Build a feed forward network (multi-layer-perceptron, or mlp) 
-  with 'n_layers' hidden layers, each of size 'size' units.
-  Use tf.nn.relu nonlinearity between layers. 
-  Args:
-          mlp_input: the input to the multi-layer perceptron
-          output_size: the output layer size
-          scope: the scope of the neural network
-          n_layers: the number of layers of the network
-          size: the size of each layer:
-          output_activation: the activation of output layer
-  Returns:
-          The tensor output of the network
-  
-  TODO: Implement this function. This will be similar to the linear 
-  model you implemented for Assignment 2. 
-  "tf.layers.dense" or "tf.contrib.layers.fully_connected" may be helpful.
-
-  A network with n layers has n 
-    linear transform + nonlinearity
-  operations before a final linear transform for the output layer 
-  (followed by the output activation, if it is not None).
-
-  '''
-  #######################################################
-  #########   YOUR CODE HERE - 7-20 lines.   ############
-  return # TODO
-  #######################################################
-  #########          END YOUR CODE.          ############
 
 
 class PG(object):
   """
   Abstract Class for implementing a Policy Gradient Based Algorithm
   """
-  def __init__(self, env, configuration=config, logger=None):
+  def __init__(self, env, configuration, logger=None):
     """
     Initialize Policy Gradient Class
   
@@ -67,20 +29,24 @@ class PG(object):
     self.action_dim, and self.lr in other methods.
     
     """
+    self.config = configuration
+
     # directory for training outputs
-    if not os.path.exists(config.output_path):
-      os.makedirs(config.output_path)
+    if not os.path.exists(self.config.output_path):
+      os.makedirs(self.config.output_path)
             
     # store hyper-params
-    self.config = config
     self.logger = logger
     if logger is None:
-      self.logger = get_logger(config.log_path)
+      self.logger = get_logger(self.config.log_path)
     self.env = env
   
     # discrete action space or continuous action space
     self.discrete = isinstance(env.action_space, gym.spaces.Discrete)
     self.observation_dim = self.env.observation_space.shape[0]
+    # for simple_spread we don't need to worry about communication space
+    # however, for senarios with communication channels, we will need to re-look at this
+    #  as action_space seems to be a tuple of movement space and comm space
     self.action_dim = self.env.action_space.n if self.discrete else self.env.action_space.shape[0]
   
     self.lr = self.config.learning_rate
@@ -310,8 +276,8 @@ class PG(object):
     returns = np.concatenate(all_returns)
   
     return returns
-  
-  
+
+
   def calculate_advantage(self, returns, observations):
     """
     Calculate the advantage
@@ -325,16 +291,16 @@ class PG(object):
     TODO:
     If config.use_baseline = False and config.normalize_advantage = False,
     then the "advantage" is just going to be the returns (and not actually
-    an advantage). 
+    an advantage).
 
     if config.use_baseline, then we need to evaluate the baseline and subtract
-      it from the returns to get the advantage. 
+      it from the returns to get the advantage.
       HINT: 1. evaluate the self.baseline with self.sess.run(...
 
     if config.normalize_advantage:
       after doing the above, normalize the advantages so that they have a mean of 0
       and standard deviation of 1.
-  
+
     """
     adv = returns
     #######################################################
@@ -372,7 +338,7 @@ class PG(object):
     action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder: batch})[0]
     return action
 
-  def train_for_batch(self, paths):
+  def train_for_batch_paths(self, paths):
     observations = np.concatenate([path["observation"] for path in paths])
     actions = np.concatenate([path["action"] for path in paths])
     rewards = np.concatenate([path["reward"] for path in paths])

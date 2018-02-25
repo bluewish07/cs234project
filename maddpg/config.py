@@ -1,9 +1,8 @@
 import tensorflow as tf
 
 class config():
-
     env_name = "simple_spread"
-    algo_name = "PG"
+    algo_name = "MADDPG"
     record           = False
 
     # output config
@@ -18,12 +17,14 @@ class config():
     
     # model and training config
     num_batches = 200 # number of batches trained on 
-    batch_size = 1000 # number of steps used to compute each policy update
+    batch_size = 1000 # number of samples used to compute each policy update
     max_ep_len = 1000 # maximum episode length
+    train_freq = 100 # do a training step after every train_freq samples added to replay buffer
     learning_rate = 3e-2
     gamma              = 1.0 # the discount factor
     use_baseline = True 
-    normalize_advantage=True 
+    normalize_advantage=True
+    replay_buffer_size = 1000000
     # parameters for the policy and baseline models
     n_layers = 1 
     layer_size = 16 
