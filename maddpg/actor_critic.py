@@ -7,6 +7,7 @@ import tensorflow as tf
 from pg import PG
 from config import config
 from utils.general import get_logger, export_plot
+from utils.network import build_mlp
 from utils.replay_buffer import ReplayBuffer
 
 #TODO: we need to add target network
@@ -24,11 +25,60 @@ class ActionCritic(PG):
   def get_critic_network_op(self, scope="critic_network"):
     """
     Build critic network. Assign it to self.q
-    TODO later: add a target network to self.target_q
     :param scope: variable scope used for parameters in this network
-    :return: critic_network_op
+    :return: None
     """
-    #TODO
+    q_scope = "q"
+    target_q_scope = "target_q"
+    with tf.variable_scope(scope):
+      if self.discrete:
+        self.q = build_mlp(self.observation_placeholder, self.action_dim, scope=q_scope)
+        self.target_q = build_mlp(self.observation_placeholder, self.action_dim, scope=target_q_scope)
+      else:
+        input = tf.concat([self.observation_placeholder, self.action_placeholder], axis=1)
+        self.q = build_mlp(input, 1, scope=q_scope)
+        self.target_q = build_mlp(input, 1, scope=target_q_scope)
+
+
+  def add_update_target_op(self, q_scope, target_q_scope):
+      """
+      update_target_op will be called periodically
+      to copy Q network weights to target Q network
+
+      Remember that in DQN, we maintain two identical Q networks with
+      2 different set of weights. In tensorflow, we distinguish them
+      with two different scopes. One for the target network, one for the
+      regular network. If you're not familiar with the scope mechanism
+      in tensorflow, read the docs
+      https://www.tensorflow.org/programmers_guide/variable_scope
+
+      Periodically, we need to update all the weights of the Q network
+      and assign them with the values from the regular network. Thus,
+      what we need to do is to build a tf op, that, when called, will
+      assign all variables in the target network scope with the values of
+      the corresponding variables of the regular network scope.
+
+      Args:
+          q_scope: (string) name of the scope of variables for q
+          target_q_scope: (string) name of the scope of variables
+                      for the target network
+      """
+      op_list = list()
+
+      q_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, q_scope)
+      target_q_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_q_scope)
+      q_vars_by_name_suffix = dict([(q_var.name[q_var.name.find('/'):], q_var) for q_var in q_vars])
+      target_q_vars_by_name_suffix = dict([(var.name[var.name.find('/'):], var) for var in target_q_vars])
+      for q_var_name_suffix, q_var in q_vars_by_name_suffix.iteritems():
+          # q_var = tf.Print(q_var, [q_var], "current_q", summarize=20)
+          target_q_var = target_q_vars_by_name_suffix[q_var_name_suffix]
+          # target_q_var = tf.Print(target_q_var, [target_q_var], "target before", summarize=20)
+          target_q_var = tf.assign(target_q_var, q_var)
+          # target_q_var = tf.Print(target_q_var, [target_q_var], "target after", summarize=20)
+          op_list.append(target_q_var)
+
+      self.update_target_op = tf.group(*op_list)
+
 
   def add_baseline_op(self, scope="baseline"):
     """
@@ -39,9 +89,10 @@ class ActionCritic(PG):
     :param scope: unused
     :return: None
     """
-    self.baseline = self.get_critic_network_op()
-    self.baseline_target_placeholder =  # TODO
-    self.update_baseline_op =  # TODO
+    self.baseline = self.q
+    self.baseline_target_placeholder =  tf.placeholder(tf.float32, shape=[None])
+    loss = tf.losses.mean_squared_error(self.baseline, self.baseline_target_placeholder)
+    self.update_baseline_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
 
 
   #################### Running the model ######################
@@ -113,12 +164,13 @@ class ActionCritic(PG):
     #########          END YOUR CODE.          ############
 
 
-  def train_for_batch_samples(self, samples):
+  def train_for_batch_samples(self, samples, t):
     """
         Train for a batch of samples
 
             Args:
               samples: a tuple of lists ([obs_t], [a_t], [r_t], [obs_t+1], done_mask)
+              t: the number of batches that have been run
 
     """
     observations, actions, rewards, _, _ = samples
@@ -133,6 +185,9 @@ class ActionCritic(PG):
       self.observation_placeholder: observations,
       self.action_placeholder: actions,
       self.advantage_placeholder: advantages})
+
+    if t % self.config.target_update_freq:
+      self.sess.run(self.update_target_op, feed_dict={})
 
     self.env.render()
 

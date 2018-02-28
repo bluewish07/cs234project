@@ -71,7 +71,7 @@ class MultiAgentPG(object):
     for i in range(self.env.n):
       paths_n.append([])
 
-    while (num_episodes or t < self.config.batch_size):      
+    while (num_episodes or t < self.config.batch_size):
       obs_n = self.env.reset() # list of n observations after initial setup
       observations_n, actions_n, rewards_n = [], [], [] # holds values for each agent
 
@@ -119,7 +119,7 @@ class MultiAgentPG(object):
   def train(self):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
-      paths_n = self.sample_paths_n()
+      paths_n = self.sample_paths_n(num_episodes=self.config.batch_size_in_episodes)
       for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agents[i]
