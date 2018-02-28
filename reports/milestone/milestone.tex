@@ -1,0 +1,134 @@
+%%%%%%%% ICML 2018 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{booktabs} % for professional tables
+
+% hyperref makes hyperlinks in the resulting PDF.
+% If your build breaks (sometimes temporarily if a hyperlink spans a page)
+% please comment out the following usepackage line and replace
+% \usepackage{icml2018} with \usepackage[nohyperref]{icml2018} above.
+\usepackage{hyperref}
+
+% Attempt to make hyperref and algorithmic work together better:
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+% Use the following line for the initial blind version submitted for review:
+%\usepackage{icml2018}
+
+% If accepted, instead use the following line for the camera-ready submission:
+\usepackage[accepted]{icml2018}
+
+% The \icmltitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+\icmltitlerunning{Submission and Formatting Instructions for ICML 2018}
+
+\begin{document}
+
+\twocolumn[
+\icmltitle{Generalized Multi-Agent Reinforcement Learning in \\ 
+	       Cooperative and Competitive Environments}
+
+% It is OKAY to include author information, even for blind
+% submissions: the style file will automatically remove it for you
+% unless you've provided the [accepted] option to the icml2018
+% package.
+
+% List of affiliations: The first argument should be a (short)
+% identifier you will use later to specify author affiliations
+% Academic affiliations should list Department, University, City, Region, Country
+% Industry affiliations should list Company, City, Region, Country
+
+% You can specify symbols, otherwise they are numbered in order.
+% Ideally, you should not use this facility. Affiliations will be numbered
+% in order of appearance and this is the preferred way.
+\icmlsetsymbol{equal}{*}
+
+\begin{icmlauthorlist}
+\icmlauthor{Diana Huang}{equal,to}
+\icmlauthor{Nitin Viswanathan}{equal,to,goo}
+\icmlauthor{Shalini Keshavamurthy}{goo}
+\end{icmlauthorlist}
+
+
+% You may provide any keywords that you
+% find helpful for describing your paper; these are used to populate
+% the "keywords" metadata in the PDF but will not be shown in the document
+\icmlkeywords{Machine Learning, ICML}
+
+\vskip 0.3in
+]
+
+% this must go after the closing bracket ] following \twocolumn[ ...
+
+% This command actually creates the footnote in the first column
+% listing the affiliations and the copyright notice.
+% The command takes one argument, which is text to display at the start of the footnote.
+% The \icmlEqualContribution command is standard text for equal contribution.
+% Remove it (just {}) if you do not need this facility.
+
+%\printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
+%\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
+
+\begin{abstract}
+This document provides the current progress on our project. The objective of the 
+\end{abstract}
+
+\section{Introduction}
+\label{submission}
+
+There are many applications where multiple agents need to learn how to act together, such as communication scenarios and multiplayer games. Traditional reinforcement learning approaches do not work well on these problems because the environment for any single agent changes over time as other agents change their policies, leading to instability during training and high variance in results \cite{maddpg}. \\
+
+Existing efforts in Multi-Agent Reinforcement Learning (MARL) propose new techniques to get around these issues, but they do not generalize well to larger numbers of agents due to the growing computational complexity.  We will explore generalizable training approaches for MARL to find policies that allow training on a smaller number of agents but scale well when applied in environments with more agents. \\
+
+We will use an existing OpenAI Gym environment created for MARL [1]. This environment supports a variety of cooperative and competitive scenarios, as well as environments that allow communication between agents (beyond just their locations in the environment). \\
+
+We have reviewed many papers in the MARL space as preparation for our project. \cite{maddpg} is the most relevant paper as it uses the same environment that we plan to use, and modifies Deep Deterministic Policy Gradients (DDPG) to work in a multi-agent setting. [3] and [4] focus specifically on the task of communication amongst cooperative agents. \\
+
+As a starting baseline for the project we have implemented the policy gradient method with OpenAI multi-particle-envs. We have chosen 'simple-spread' environment to evaluate the performance of policy gradient method.
+
+
+\section{Approach}
+
+This section will describe in detail the environment setup, evaluation metric used and results.
+
+
+\subsection{Environment setup}
+
+Write about open ai gym environments. Write more in detail about environment we are using for the experiments. Describe agents, rewards, observation dimension, etc. 
+
+\subsection{Experiments}
+
+Write about \\
+1. environment \\
+2. configuration parameters \\
+3. algorithm used
+4. expected results
+
+\subsection{Evaluation}
+
+Write about evaluation metrics for multi-agent environments.
+which metric is chosen and why? 
+
+\subsection{Results}
+
+write about the results we get from the experiments.
+Include video snapshots , tables.
+
+\section{Future work}
+
+As a next baseline to gauge performance, we will implement the approach used in \cite{maddpg} and test it on a variety of competitive and cooperative environments. In order to generalize this approach, we will train agents using information only on nearby agents, not on every agent in the environment, as this limits the complexity and specificity of any learned policies. \\
+
+We will evaluate our model performance both during train and test time. During train time, we will see how quickly we are able to reach convergence and how stable the training process is across the different implemented methods. During test time, we will compare our different methods with the average reward over many trials as well as the variance of the average, and also see how performance changes as we change the number of agents present to test generalization.
+As a stretch goal, we will experiment with on-policy approaches (e.g. SARSA) and see if they can be used to further improve an optimal policy produced by an off-policy approach.
+
+\bibliography{milestone}
+\bibliographystyle{icml2018}
+
+
+\end{document}
+
