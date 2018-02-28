@@ -191,9 +191,6 @@ class PG(object):
                 
                 
   def train_for_batch_paths(self, paths):
-    """
-    NV TODO: Not sure we need this function here? We will never train just one PG agent alone?
-    """
     observations = np.concatenate([path["observation"] for path in paths])
     actions = np.concatenate([path["action"] for path in paths])
     rewards = np.concatenate([path["reward"] for path in paths])

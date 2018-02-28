@@ -120,7 +120,6 @@ class MultiAgentPG(object):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
       paths_n = self.sample_paths_n()
-      self.logger.info("Done pulling sample paths")
       for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agents[i]
