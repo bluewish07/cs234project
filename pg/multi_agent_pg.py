@@ -10,7 +10,7 @@ import time
 import inspect
 from utils.general import get_logger, Progbar, export_plot
 from config import config
-
+  
 from pg import PG
 
 class MultiAgentPG(object):
@@ -31,26 +31,24 @@ class MultiAgentPG(object):
 
     self.env = env
 
-    # create n PG object for n agents
-    agent_networks = []
-    for i in range(env.n):
-      agent_networks.append(PG(env, configuration=self.config, logger=logger))
-
-    self.agent_networks = agent_networks
-
-
+    # create n PG objects for n agents
+    temp = []
+    for i in range(self.env.n):
+      temp.append(PG(self.env, configuration=self.config, logger=logger))
+    self.agents = temp
+    
   def build(self):
-    for idx, agent_net in enumerate(self.agent_networks):
+    for idx, agent_net in enumerate(self.agents):
       var_scope = "agent_" + str(idx)
       with tf.variable_scope(var_scope):
         agent_net.build()
 
   def initialize(self):
     sess = tf.Session()
-    for network in self.agent_networks:
+    for network in self.agents:
         network.initialize(session=sess)
 
-  def sample_paths_n(self, env, num_episodes=None):
+  def sample_paths_n(self, num_episodes=None):
     """
           Sample paths for all agents for the environment.
 
@@ -69,22 +67,35 @@ class MultiAgentPG(object):
     episode = 0
     paths_n = []
     t = 0
+        
+    for i in range(self.env.n):
+      paths_n.append([])
 
-    while (num_episodes or t < self.config.batch_size):
-      obs_n = env.reset() # list of n observations after initial setup
-      observations_n, actions_n, rewards_n = [], [], []
+    while (num_episodes or t < self.config.batch_size):      
+      obs_n = self.env.reset() # list of n observations after initial setup
+      observations_n, actions_n, rewards_n = [], [], [] # holds values for each agent
 
-      for step in range(self.config.max_ep_len):
-        act_n = []  # list of n actions for this step
-        for i in env.n:
-          obs = obs_n[i]
-          observations_n[i].append(obs)
-          act = self.agent_networks[i].get_sampled_action(obs)
-          act_n.append(act)
-          actions_n[i].append(act)
+      for i in range(self.env.n):
+        observations_n.append([])
+        actions_n.append([])
+        rewards_n.append([])
+        
+      for step in range(self.config.max_ep_len):         
+        action = []  # actions taken by all agents at this timestep
+        for i in range(self.env.n):
+          observations_n[i].append(obs_n[i])
+          
+          act = self.agents[i].get_sampled_action(obs_n[i])
+          # act = self.env.action_space[0].sample() # for testing without policy network
+          
+          action_onehot = np.zeros((self.env.action_space[0].n))
+          action_onehot[act] = 1
+          
+          action.append(action_onehot)
+          actions_n[i].append(act) # append the non-onehot version for training
 
-        obs_n, rew_n, done_n, info_n = env.step(act_n)
-        for i in env.n:
+        obs_n, rew_n, done_n, info_n = self.env.step(action)
+        for i in range(self.env.n):
           rewards_n[i].append(rew_n[i])
         t += 1
         if (done_n[0] or step == self.config.max_ep_len - 1):
@@ -93,7 +104,7 @@ class MultiAgentPG(object):
           break
 
       # form a path for each agent
-      for i in env.n:
+      for i in range(self.env.n):
         path = {"observation": np.array(observations_n[i]),
                 "reward": np.array(rewards_n[i]),
                 "action": np.array(actions_n[i])}
@@ -108,10 +119,11 @@ class MultiAgentPG(object):
   def train(self):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
-      paths_n = self.sample_paths_n(self.env)
-      for i in self.env.n:
+      paths_n = self.sample_paths_n()
+      self.logger.info("Done pulling sample paths")
+      for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
-        agent_net = self.agent_networks[i]
+        agent_net = self.agents[i]
         agent_net.train_for_batch_paths(paths_n[i])
 
     self.logger.info("- Training all done.")

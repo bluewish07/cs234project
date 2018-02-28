@@ -9,6 +9,23 @@ from config import config
 from utils.general import get_logger, export_plot
 from utils.network import build_mlp
 
+def build_mlp(
+          mlp_input, 
+          output_size,
+          scope, 
+          n_layers=config.n_layers, 
+          size=config.layer_size, 
+          output_activation=None):
+  with tf.variable_scope(scope):
+    h = mlp_input # handle case where n_layers = 0 or 1
+    
+    for i in range(n_layers):
+      h = tf.layers.dense(h, size, activation=tf.nn.relu)
+      
+    # make output layer
+    out = tf.layers.dense(h, output_size, activation = output_activation)
+  
+  return out
 
 
 class PG(object):
@@ -16,19 +33,6 @@ class PG(object):
   Abstract Class for implementing a Policy Gradient Based Algorithm
   """
   def __init__(self, env, configuration, logger=None):
-    """
-    Initialize Policy Gradient Class
-  
-    Args:
-            env: the open-ai environment
-            config: class with hyperparameters
-            logger: logger instance from logging module
-
-    You do not need to implement anything in this function. However,
-    you will need to use self.discrete, self.observation_dim,
-    self.action_dim, and self.lr in other methods.
-    
-    """
     self.config = configuration
 
     # directory for training outputs
@@ -41,167 +45,58 @@ class PG(object):
       self.logger = get_logger(self.config.log_path)
     self.env = env
   
-    # discrete action space or continuous action space
-    self.discrete = isinstance(env.action_space, gym.spaces.Discrete)
-    self.observation_dim = self.env.observation_space.shape[0]
-    # for simple_spread we don't need to worry about communication space
+    # action space for a given agent - is Discrete(5) for simple_spread
+    # NOTE: assumes that all agents have the same action space for now
+    # TODO: action_dim as a argument to this function, so it can vary by agent
+    
+    # TODO: for simple_spread we don't need to worry about communication space
     # however, for senarios with communication channels, we will need to re-look at this
     #  as action_space seems to be a tuple of movement space and comm space
-    self.action_dim = self.env.action_space.n if self.discrete else self.env.action_space.shape[0]
-  
-    self.lr = self.config.learning_rate
+    self.action_dim = self.env.action_space[0].n
 
+    # observation space for a given agent - is Box(18) for simple_spread
+    # NOTE: assumes that all agents have the same observation space for now
+    # TODO: observation_dim as a argument to this function, so it can vary by agent
+    self.observation_dim = self.env.observation_space[0].shape[0]
+    
+    self.lr = self.config.learning_rate
 
 ############### Building the model graph ####################
   
   
   def add_placeholders_op(self):
-    """
-    Adds placeholders to the graph
-    Set up the observation, action, and advantage placeholder
-  
-    TODO: add placeholders:
-    self.observation_placeholder, type = tf.float32
-    self.action_placeholder, type depends on the self.discrete
-    self.advantage_placeholder, type = tf.float32
-  
-    HINT: In the case of a continuous action space, an action will be specified 
-    by self.action_dim float32 numbers.  
-    """
-    #######################################################
-    #########   YOUR CODE HERE - 8-12 lines.   ############
-    self.observation_placeholder = # TODO
-    if self.discrete:
-      self.action_placeholder = # TODO
-    else:
-      self.action_placeholder = # TODO
+    self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
+    
+    # NOTE: action_placeholder is just a number, but the actual action outputted has to be converted into a one-hot vector before being used in the environment
+    self.action_placeholder = tf.placeholder(tf.int32, shape=(None))
   
     # Define a placeholder for advantages
-    self.advantage_placeholder = # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
+    self.advantage_placeholder = tf.placeholder(tf.float32, shape=(None))
   
   
   def build_policy_network_op(self, scope = "policy_network"):
     """
-    Build the policy network, construct the tensorflow operation to sample 
-    actions from the policy network outputs, and compute the log probabilities
-    of the taken actions (for computing the loss later). These operations are 
-    stored in self.sampled_action and self.logprob. Must handle both settings
-    of self.discrete.
-
-    TODO:
-    Discrete case:
-        logits: the logits for each action
-            HINT: use build_mlp
-        self.sampled_action: sample from these logits
-            HINT: use tf.multinomial + tf.squeeze
-        self.logprob: compute the log probabilities of the taken actions
-            HINT: 1. tf.nn.sparse_softmax_cross_entropy_with_logits computes 
-                     the *negative* log probabilities of labels, given logits.
-                  2. taken actions are different than sampled actions!
-
-    Continuous case:
-        To build a policy in a continuous action space domain, we will have the
-        model output the means of each action dimension, and then sample from
-        a multivariate normal distribution with these means and trainable standard
-        deviation.
-
-        That is, the action a_t ~ N( mu(o_t), sigma)
-        where mu(o_t) is the network that outputs the means for each action 
-        dimension, and sigma is a trainable variable for the standard deviations.
-        N here is a multivariate gaussian distribution with the given parameters.
-
-        action_means: the predicted means for each action dimension.
-            HINT: use build_mlp
-        log_std: a trainable variable for the log standard deviations.
-        --> think about why we use log std as the trainable variable instead of std
-        self.sampled_actions: sample from the gaussian distribution as described above
-            HINT: use tf.random_normal
-        self.lobprob: the log probabilities of the taken actions
-            HINT: use tf.contrib.distributions.MultivariateNormalDiag
-
+    Builds the policy network. Note that sampled_action needs to be a onehot vector in order
+    to work with multiagent environments.
     """
-    #######################################################
-    #########   YOUR CODE HERE - 5-10 lines.   ############
-  
-    if self.discrete:
-      action_logits =         # TODO 
-      self.sampled_action =   # TODO 
-      self.logprob =          # TODO 
-    else:
-      action_means =          # TODO 
-      log_std =               # TODO 
-      self.sampled_action =   # TODO 
-      self.logprob =          # TODO 
-    #######################################################
-    #########          END YOUR CODE.          ############
+    action_logits =         build_mlp(self.observation_placeholder, self.action_dim, scope)
+    self.sampled_action =   tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+    self.logprob =          -tf.nn.sparse_softmax_cross_entropy_with_logits(logits=action_logits, labels=self.action_placeholder)
             
-  
-  
   def add_loss_op(self):
-    """
-    Sets the loss of a batch, the loss is a scalar 
-  
-    TODO: Compute the loss for a given batch. 
-    Recall the update for REINFORCE with advantage:
-    θ = θ + α ∇_θ log π_θ(s_t, a_t) A_t
-    Think about how to express this update as minimizing a 
-    loss (so that tensorflow will do the gradient computations
-    for you).
-
-    You only have to reference fields of self that you have
-    already set in previous methods.
-
-    """
-
-    ######################################################
-    #########   YOUR CODE HERE - 1-2 lines.   ############
-    self.loss = # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
+    self.loss = -tf.reduce_mean(self.logprob*self.advantage_placeholder)
   
   
   def add_optimizer_op(self):
-    """
-    Sets the optimizer using AdamOptimizer
-    TODO: Set self.train_op
-    HINT: Use self.lr, and minimize self.loss
-    """
-    ######################################################
-    #########   YOUR CODE HERE - 1-2 lines.   ############
-    self.train_op = # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
+    opt1 = tf.train.AdamOptimizer(learning_rate = self.lr)
+    self.train_op = opt1.minimize(self.loss)
   
   
   def add_baseline_op(self, scope = "baseline"):
-    """
-    Build the baseline network within the scope
-
-    In this function we will build the baseline network.
-    Use build_mlp with the same parameters as the policy network to
-    get the baseline estimate. You also have to setup a target
-    placeholder and an update operation so the baseline can be trained.
-    
-    Args:
-            scope: the scope of the baseline network
-  
-    TODO: Set 
-    self.baseline,
-        HINT: use build_mlp
-    self.baseline_target_placeholder,
-    self.update_baseline_op,
-        HINT: first construct a loss. Use tf.losses.mean_squared_error.
-
-    """
-    ######################################################
-    #########   YOUR CODE HERE - 4-8 lines.   ############
-    self.baseline = # TODO
-    self.baseline_target_placeholder = # TODO
-    self.update_baseline_op = # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
+    self.baseline = tf.squeeze(build_mlp(self.observation_placeholder, 1, scope))
+    self.baseline_target_placeholder = tf.placeholder(tf.float32, shape=(None))
+    opt2 = tf.train.AdamOptimizer(learning_rate = self.lr)
+    self.update_baseline_op = opt2.minimize(tf.losses.mean_squared_error(self.baseline_target_placeholder, self.baseline))
   
   def build(self):
     """
@@ -246,99 +141,59 @@ class PG(object):
   
   
   def get_returns(self, paths):
-    """
-    Calculate the returns G_t for each timestep
-  
-    Args:
-      paths: recorded sampled path.  See sample_path() for details.
-  
-    After acting in the environment, we record the observations, actions, and
-    rewards. To get the advantages that we need for the policy update, we have
-    to convert the rewards into returns, G_t, which are themselves an estimate
-    of Q^π (s_t, a_t):
-    
-       G_t = r_t + γ r_{t+1} + γ^2 r_{t+2} + ... + γ^{T-t} r_T
-    
-    where T is the last timestep of the episode.
-
-    TODO: compute and return G_t for each timestep. Use config.gamma.
-    """
-
     all_returns = []
     for path in paths:
       rewards = path["reward"]
-      #######################################################
-      #########   YOUR CODE HERE - 5-10 lines.   ############
-      path_returns = # TODO
-      #######################################################
-      #########          END YOUR CODE.          ############
-      all_returns.append(returns)
+      
+      discounted_return = 0
+      path_returns = []
+      for i in range(len(rewards)):
+        discounted_return += np.power(self.config.gamma, i)*rewards[i]
+      path_returns.append(discounted_return)
+      for i in range(len(rewards)-1):
+        discounted_return = (discounted_return - rewards[i])/self.config.gamma
+        path_returns.append(discounted_return)
+      all_returns.append(path_returns)
     returns = np.concatenate(all_returns)
   
     return returns
 
 
   def calculate_advantage(self, returns, observations):
-    """
-    Calculate the advantage
-    Args:
-            returns: all discounted future returns for each step
-            observations: observations
-              Calculate the advantages, using baseline adjustment if necessary,
-              and normalizing the advantages if necessary.
-              If neither of these options are True, just return returns.
-
-    TODO:
-    If config.use_baseline = False and config.normalize_advantage = False,
-    then the "advantage" is just going to be the returns (and not actually
-    an advantage).
-
-    if config.use_baseline, then we need to evaluate the baseline and subtract
-      it from the returns to get the advantage.
-      HINT: 1. evaluate the self.baseline with self.sess.run(...
-
-    if config.normalize_advantage:
-      after doing the above, normalize the advantages so that they have a mean of 0
-      and standard deviation of 1.
-
-    """
     adv = returns
-    #######################################################
-    #########   YOUR CODE HERE - 5-10 lines.   ############
     if self.config.use_baseline:
-      # TODO
+      base = self.sess.run(self.baseline, feed_dict={
+                    self.observation_placeholder : observations, 
+                    })
+      adv = returns - base
     if self.config.normalize_advantage:
-      # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
+      mean = np.mean(adv)
+      std = np.sqrt(np.var(adv))
+      adv = (adv - mean)/std
     return adv
   
   
   def update_baseline(self, returns, observations):
-    """
-    Update the baseline
-
-    TODO:
-      apply the baseline update op with the observations and the returns.
-    """
-    #######################################################
-    #########   YOUR CODE HERE - 1-5 lines.   ############
-    pass # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
-
+    self.sess.run(self.update_baseline_op, feed_dict={
+                self.observation_placeholder: observations,
+                self.baseline_target_placeholder: returns
+                })
   def get_sampled_action(self, observation):
     """
-    Run self.sample_ation op
+    Run self.sample_action op
 
     :param observation: single observation to run self.sampled_action with
     :return: action
     """
-    batch = tf.expand_dims(observation, 0)
+    batch = np.expand_dims(observation, 0)
     action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder: batch})[0]
     return action
-
+                
+                
   def train_for_batch_paths(self, paths):
+    """
+    NV TODO: Not sure we need this function here? We will never train just one PG agent alone?
+    """
     observations = np.concatenate([path["observation"] for path in paths])
     actions = np.concatenate([path["action"] for path in paths])
     rewards = np.concatenate([path["reward"] for path in paths])
@@ -375,6 +230,10 @@ class PG(object):
 
   def sample_path(self, env, num_episodes=None):
     """
+    NV: Not sure this method is relevant at all, as any path generation has to involve
+    multiple agents
+    
+    
     Sample path for the environment.
 
     Args:
@@ -405,7 +264,7 @@ class PG(object):
       for step in range(self.config.max_ep_len):
         states.append(state)
         action = self.sess.run(self.sampled_action, feed_dict={self.observation_placeholder: states[-1][None]})[0]
-        # TODO: here we need to modify the sample_path method so that we could accomodate a list of actions, rewards and observations
+        # DH TODO: here we need to modify the sample_path method so that we could accomodate a list of actions, rewards and observations
         state, reward, done, info = env.step(action)
         actions.append(action)
         rewards.append(reward)
@@ -545,17 +404,17 @@ class PG(object):
 
 ################### Summary and Recording etc #######################
 
-#TODO: I don't think we need record here, instead we should plug in env.render() as appropriate
+#DH TODO: I don't think we need record here, instead we should plug in env.render() as appropriate
   def record(self):
      """
      Re create an env and record a video for one episode
      """
-
+     pass
      #env = gym.make(self.config.env_name)
      #env = gym.wrappers.Monitor(env, self.config.record_path, video_callable=lambda x: True, resume=True)
      #self.evaluate(env, 1)
 
-#TODO: summary stuff might need to be consolidated and moved to multi_agent_pg
+#DH TODO: summary stuff might need to be consolidated and moved to multi_agent_pg
   def record_summary(self, t):
     """
     Add summary to tfboard
