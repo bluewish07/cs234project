@@ -5,6 +5,7 @@ class config():
     env_name = "simple_spread"
     algo_name = "PG"
     record           = False
+    render = False
 
     # output config
     output_path  = "../results/" + env_name + "/" + algo_name + "/"
