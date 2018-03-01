@@ -219,9 +219,6 @@ class PG(object):
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
     msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
     self.logger.info(msg)
-    if self.config.render:
-      self.env.render()
-
 
 ##################### For running/training a single PG model only #######################
 

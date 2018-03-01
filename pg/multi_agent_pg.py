@@ -81,6 +81,9 @@ class MultiAgentPG(object):
         rewards_n.append([])
         
       for step in range(self.config.max_ep_len):         
+        if self.config.render:
+          self.env.render()
+        
         action = []  # actions taken by all agents at this timestep
         for i in range(self.env.n):
           observations_n[i].append(obs_n[i])
@@ -127,6 +130,12 @@ class MultiAgentPG(object):
 
     self.logger.info("- Training all done.")
 
+   
+  def test(self):
+    """
+    TODO - test-time running
+    """
+    pass
 
   def run(self):
     """
