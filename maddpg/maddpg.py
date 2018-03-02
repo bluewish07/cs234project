@@ -37,7 +37,7 @@ class MADDPG(object):
     # create n DDPGActorCritic object for n agents
     agent_networks = []
     for i in range(env.n):
-      agent_networks.append(DDPGActorCritic(env, configuration=self.config, logger=logger))
+      agent_networks.append(DDPGActorCritic(i, env, configuration=self.config, logger=logger))
 
     self.agent_networks = agent_networks
 
@@ -62,7 +62,7 @@ class MADDPG(object):
               batch_size:  the number of steps to be sampled
 
           Returns:
-            obs_batch: np.array
+            obs_batch: np.array of shape (None, num_agent, observation_dim)
             act_batch: np.array
             rew_batch: np.array
             next_obs_batch: np.array
@@ -73,6 +73,8 @@ class MADDPG(object):
 
     obs_n = self.current_obs_n
     while (t < sample_freq or (not replay_buffer.can_sample(batch_size))):
+      if self.config.render:
+        self.env.render()
       idx = replay_buffer.store_frame(obs_n)
       act_n = []  # list of n actions for this step
       for i in env.n:

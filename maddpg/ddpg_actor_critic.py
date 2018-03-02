@@ -18,7 +18,8 @@ class DDPGActorCritic(object):
 
   """
 
-  def __init__(self, env, configuration, logger=None):
+  def __init__(self, agent_idx, env, configuration, logger=None):
+      self.agent_idx = agent_idx # the index of this agent
       self.config = configuration
 
       # directory for training outputs
@@ -53,6 +54,7 @@ class DDPGActorCritic(object):
   ############### Building the model graph ####################
 ### shared placeholders
   def add_placeholders_op(self):
+    self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
     self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
     self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
     self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
@@ -103,8 +105,10 @@ class DDPGActorCritic(object):
 ### critic network
   def add_critic_network_placeholders_op(self):
     #TODO: add a placeholder for all agent's action stacked, shape = (None, num_agents, action_dim)
-    #TODO: add a placeholder for all agent's next action stacked
-    #TODO: add a placeholder for next observation
+    self.actions_n_placeholder = #TODO
+    # add placeholders for update_critic_network_op
+    self.y_placeholder = #TODO
+    self.q_baseline_placeholder = #TODO
 
   def add_critic_network_op(self, scope="critic_network"):
     """
@@ -112,7 +116,7 @@ class DDPGActorCritic(object):
     :param scope: variable scope used for parameters in this network
     :return: None
     """
-    #TODO
+    #TODO: need to fix
     q_scope = "q"
     target_q_scope = "target_q"
     with tf.variable_scope(scope):
@@ -125,12 +129,7 @@ class DDPGActorCritic(object):
         self.target_q = build_mlp(input, 1, scope=target_q_scope)
 
   def add_update_critic_network_op(self):
-    """
-    Calculate y = r + gamma * target_q
-    loss
-    """
-    y = #TODO
-    loss = tf.losses.mean_squared_error(y, self.q)
+    loss = tf.losses.mean_squared_error(self.y_placeholder, self.q_baseline_placeholder)
     self.update_critic_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
 
 
@@ -194,43 +193,37 @@ class DDPGActorCritic(object):
 
   #################### Running the model ######################
 
-  def get_returns(self, samples):
+  def update_critic_network(self, samples, estimated_actions):
     """
-      Calculate the state-action value Q for this time step.
-      The function name might be a bit misleading.
-
-      Args:
-        samples: a tuple of lists ([obs_t], [a_t], [r_t], [obs_t+1], done_mask)
-
+    Update the critic network
+    Args:
+        samples: a tuple (obs_batch, act_batch, rew_batch, next_obs_batch, done_mask)
+                obs_batch: np.array of shape (None, num_agent, observation_dim)
+    TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
     """
-    #TODO should be moved to inside of add_update_critic_network_op
+    #TODO fix and finish
     q_values = []
     batched_next_obs = np.array(samples[3])
     batched_r = np.array(samples[2])
     done_mask = samples[4]
     if self.discrete:
-      target_q_values = self.sess.run(self.target_q, feed_dict={self.observation_placeholder : batched_next_obs})
-      a_indices = np.array(list(enumerate(samples[1])))
-      target_q_a_values = tf.gather_nd(target_q_values, a_indices)
-      q_samp = batched_r + self.config.gamma * target_q_a_values * tf.cast(tf.logical_not(self.done_mask), dtype=tf.float32)
+        target_q_values = self.sess.run(self.target_q, feed_dict={self.observation_placeholder: batched_next_obs})
+        a_indices = np.array(list(enumerate(samples[1])))
+        target_q_a_values = tf.gather_nd(target_q_values, a_indices)
+        q_samp = batched_r + self.config.gamma * target_q_a_values * tf.cast(tf.logical_not(self.done_mask),
+                                                                             dtype=tf.float32)
     for sample in samples:
+        q_values.append()
 
-      q_values.append()
 
-    return q_values
-
-  def update_critic_network(self, returns, observations, actions):
+  def update_actor_network(self, samples):
     """
-    Update the critic network
 
+    :param samples:
+    TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
+    :return:
     """
-    #######################################################
-    #########   YOUR CODE HERE - 1-5 lines.   ############
-    pass # TODO
-    #######################################################
-    #########          END YOUR CODE.          ############
-
-
+    #TODO
 
   def get_sampled_action(self, observation):
     """
@@ -249,24 +242,32 @@ class DDPGActorCritic(object):
         Train for a batch of samples
 
             Args:
-              samples: a tuple of lists ([obs_t], [a_t], [r_t], [obs_t+1], done_mask)
+              samples: a tuple (obs_batch, act_batch, rew_batch, next_obs_batch, done_mask)
+                    obs_batch: np.array of shape (None, num_agent, observation_dim)
 
     """
-    #TODO: fix this method
 
     observations, true_actions, rewards, _, _ = samples
-    # TODO: update agent approx networks, for loop
     # update this agent's policy approx networks for other agents
-    self.sess.run(self.update_policy_approx_networks_op, feed_dict={self.observation_placeholder : observations,
-                                                                    self.action_placeholder : true_actions})
-    # update centralized Q network
-    self.update_baseline(returns, observations, true_actions)
-    # update actor network
-    approx_actions = self.sess.run(self.policy_approximates, feed_dict={self.observation_placeholder : observations,
-                                                                        self.action_placeholder: true_actions})
-    self.sess.run(self.train_op, feed_dict={
-      self.observation_placeholder: observations,
-      self.action_placeholder: approx_actions,
-      self.advantage_placeholder: advantages})
+    observations_by_agent = np.swapaxes(observations, 0, 1) # shape (num_agent, batch_size, observation_dim)
+    true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
+    for i in self.env.n:
+      obs = observations_by_agent[i]
+      act = true_actions_by_agent[i]
+      self.sess.run(self.update_policy_approx_networks_op, feed_dict={self.observation_placeholder : obs,
+                                                                    self.action_placeholder : act})
 
-    self.env.render()
+    # get an estimated action from each agent approx network
+    # Specifically, for the current agent, get the action from the target policy network
+    # for all other agents, get the action from the approx network
+    #TODO
+    est_actions = #TODO # shape = (None, num_agent, action_dim)
+
+    # update centralized Q network
+    self.update_critic_network(samples, est_actions)
+
+    # update actor network
+    self.update_actor_network(samples)
+
+    # update target networks
+    self.sess.run(self.update_target_op, feed_dict={})

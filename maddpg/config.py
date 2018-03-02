@@ -21,7 +21,6 @@ class config():
     batch_size = 1000 # number of samples used to compute each policy update
     max_ep_len = 1000 # maximum episode length
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
-    target_update_freq = 100 # update target q network every target_update_freq iterations/batches
     learning_rate = 0.01
     gamma              = .95 # the discount factor
     use_baseline = True 
