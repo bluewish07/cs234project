@@ -26,6 +26,7 @@
 % other packages
 \usepackage{verbatim}
 \usepackage{url}
+\usepackage{amsmath,amssymb}
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
@@ -87,7 +88,7 @@ This document provides the current progress on our project. The objective of the
 \section{Introduction}
 \label{submission}
 
-There are many applications where multiple agents need to learn how to act together, such as multiplayer games (cite), multi-robot control (cite), communication scenarios (cite), and even self-play (cite). Existing efforts in Multi-Agent Reinforcement Learning (MARL) have looked at both existing reinforcement learning methodologies as well as modifying them to better support multiple agents.
+There are many applications where multiple agents need to learn how to act together, such as multiplayer games ~\cite{multigames}, multi-robot control ~\cite{multirobot}, communication scenarios ~\cite{communication}, and even self-play ~\cite{selfplay}. Existing efforts in Multi-Agent Reinforcement Learning (MARL) have looked at both existing reinforcement learning methodologies as well as modifying them to better support multiple agents.
 
 Traditional reinforcement learning approaches, focused on training a single agent, do not work well on these problems because the environment for any single agent changes over time as other agents change their policies, leading to instability during training and high variance in results (cite). Furthermore, experience replay as designed for traditional Q-learning cannot be applied in multi-agent scenarios, significantly hampering stable learning.
 
@@ -115,9 +116,13 @@ As part of our post-milestone investigations, we plan to apply our methods to ot
 \subsection{Methods}
 As an initial baseline, we have implemented the REINFORCE algorithm for our multi-agent scenario. With this methodology, every agent trains it's own independent policy network based on the observed environment and possible actions it can take. We did not expect REINFORCE to perform well on the environment due to how much it changes across time steps - not only does the environment change as agents move, but the policies they follow change as well. Additionally, individual agents might not always get the correct gradient signal as an agent could take a good action but if other agents took bad actions, leading to overall decrease in reward, the gradient for the agent taking the correct action could still be negative. Nevertheless, REINFORCE serves as a baseline for comparing against more sophisticated approaches.
 
-We are currently in the process of implementing MADDPG from ~\cite{maddpg} as a second baseline. MADDPG takes DDPG and tailors it to multi-agent scenarios, resulting in significantly better performance than single-agent methods such as REINFORCE and DDPG. MADDPG trains separate policy networks for every agent, but uses a centralized critic function that incorporates information across all agents to ensure a more stable learning process:
+We are currently in the process of implementing MADDPG from ~\cite{maddpg} as a second baseline. MADDPG takes DDPG and tailors it to multi-agent scenarios, resulting in significantly better performance than single-agent methods such as REINFORCE and DDPG. MADDPG trains separate policy networks for every agent, but uses a centralized action-value function that incorporates information across all agents to ensure a more stable learning process. 
 
-$$Q_i = 0$$
+Consider a game with $N$ agents, and let $\pi = \{\pi_1, ..., \pi_N\}$ be the associated set of agent policies that are parametrized by $\theta_1, ..., \theta_N$. MADDPG then writes the gradient update for agent $i$, $\nabla_{\theta_i} J(\theta_i)$, as:
+
+$$\nabla_{\theta_i}J(\theta_i) = \mathbb{E}_{s, a_i}[\nabla_{\theta_i}log \pi_i(a_i|o_i)Q^{\pi}_i(x, a_1, ..., a_N)]$$
+
+Where x $o_i$ is the local observation of the environment by agent $i$, $x$ is the full state information across all agents, and $Q^{\pi}_i$ is a centralized action-value function that takes as input the actions of all agents instead of just for one specific agent. By incorporating the actions of all agents into the action-value function instead of only each individual agent, MADDPG produces better and more stable results than traditional policy gradient or Q-learning approaches.
 
 Our third algorithm, will be a modified version of MADDPG that trains agents in a generalized way. More specifically, we will still maintain a centralized critic function for
 
@@ -129,18 +134,12 @@ We will evaluate our model performance both during train and test time. During t
 
 We expect to be able to match the results from MADDPG when evaluating on up to 3 agents. However, we aim to outperform MADDPG when applying the policies generated from training on 3 agents to scenarios with more than 3 agents, as we will be specifically tailoring our algorithm for generalization to larger numbers of agents.
 
-TODO - insert table showing the parameters we used for the different policies.
-
 \subsection{Results}
-
-Figures ~\ref{fig:pg-1-16} and ~\ref{fig:pg-2-128} show our initial results from training our network. We can see that 
-
-TODO - write about the results. That we didn't get much improvement even with more network depth. 2 layers took a bit longer to train / reach the maximum, but 
 
 \begin{figure}
 \begin{center}
     \includegraphics[scale=0.25]{pg-1-16-gamma1}
-    \caption{Average reward over time when training PG with 1 layer and 16 hidden units}
+    \caption{Average reward over time when training PG with 1 layer and 16 hidden units.}
 \end{center}
 \label{fig:pg-1-16}
 \end{figure}
@@ -148,10 +147,12 @@ TODO - write about the results. That we didn't get much improvement even with mo
 \begin{figure}
 \begin{center}
     \includegraphics[scale=0.25]{pg-2-128-gamma1}
-    \caption{Average reward over time when training PG with 2 layers and 128 hidden units}
+    \caption{Average reward over time when training PG with 2 layers and 128 hidden units.}
 \end{center}
 \label{fig:pg-2-128}
 \end{figure}
+
+Figures 2 and 3 show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
 
 \bibliography{milestone}
 \bibliographystyle{icml2018}
