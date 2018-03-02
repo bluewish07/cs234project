@@ -83,6 +83,7 @@ class MultiAgentPG(object):
       for step in range(self.config.max_ep_len):         
         if self.config.render:
           self.env.render()
+          # time.sleep(30)
         
         action = []  # actions taken by all agents at this timestep
         for i in range(self.env.n):
