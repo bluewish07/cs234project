@@ -1,4 +1,4 @@
-\begin{thebibliography}{6}
+\begin{thebibliography}{7}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -19,10 +19,17 @@ Lowe, Ryan, Wu, Yi, Tamar, Aviv, Harb, Jean, Abbeel, Pieter, and Mordatch,
 \newblock \emph{CoRR}, abs/1706.02275, 2017.
 \newblock URL \url{http://arxiv.org/abs/1706.02275}.
 
-\bibitem[Matignon et~al.(2012)Matignon, Jeanpierre, and et~al.]{multirobot}
+\bibitem[Matignon et~al.(2012{\natexlab{a}})Matignon, Jeanpierre, and
+  et~al.]{multirobot}
 Matignon, L., Jeanpierre, L., and et~al., A.-I.~Mouaddib.
 \newblock Coordinated multi-robot exploration under communication constraints
-  using decentralized markov decision processes, 2012.
+  using decentralized markov decision processes, 2012{\natexlab{a}}.
+
+\bibitem[Matignon et~al.(2012{\natexlab{b}})Matignon, Laurent, and
+  Fort-Piat]{unstable}
+Matignon, L., Laurent, G.~J., and Fort-Piat, N.~Le.
+\newblock Independent reinforcement learners in cooperative markov games: a
+  survey regarding coordination problems, 2012{\natexlab{b}}.
 
 \bibitem[OpenAI(2017)]{openaigym}
 OpenAI.
