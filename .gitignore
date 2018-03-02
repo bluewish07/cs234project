@@ -4,3 +4,7 @@
 *.DS_Store
 gym/
 .idea/
+reports/milestone/*.aux
+reports/milestone/*.blg
+reports/milestone/*.log
+reports/milestone/*.synctex
