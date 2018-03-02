@@ -11,3 +11,5 @@ reports/milestone/*.synctex
 reports/milestone/*.fdb_latexmk
 reports/milestone/*.synctex.gz
 reports/milestone/*.fls
+.env/*
+.en/*
