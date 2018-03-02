@@ -108,8 +108,17 @@ class ActionCritic(PG):
     """
 
     q_values = []
+    batched_next_obs = np.array(samples[3])
+    batched_r = np.array(samples[2])
+    done_mask = samples[4]
+    if self.discrete:
+      target_q_values = self.sess.run(self.target_q, feed_dict={self.observation_placeholder : batched_next_obs})
+      a_indices = np.array(list(enumerate(samples[1])))
+      target_q_a_values = tf.gather_nd(target_q_values, a_indices)
+      q_samp = batched_r + self.config.gamma * target_q_a_values * tf.cast(tf.logical_not(self.done_mask), dtype=tf.float32)
     for sample in samples:
-      #TODO
+
+      q_values.append()
 
     return q_values
 
