@@ -8,3 +8,6 @@ reports/milestone/*.aux
 reports/milestone/*.blg
 reports/milestone/*.log
 reports/milestone/*.synctex
+reports/milestone/*.fdb_latexmk
+reports/milestone/*.synctex.gz
+reports/milestone/*.fls
