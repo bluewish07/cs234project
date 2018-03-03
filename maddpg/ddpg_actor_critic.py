@@ -93,17 +93,18 @@ class DDPGActorCritic(object):
     """
     if scope is None:
       scope = self.actor_network_scope
-    action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_placeholder)
-    mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, q_scope)
-    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, )
-    self.actor_gradients = # TODO
+    action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
+    combined_scope = scope + "/" + self.mu_scope
+    self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -action_gradient)
+    self.actor_gradients = tf.reduce_mean(batch_actor_gradients, axis=0)
 
   def add_optimizer_op(self):
     """
     Apply self.actor_gradients
     :return: None
     """
-    self.train_op =  # TODO
+    self.train_actor_op = tf.train.AdamOptimizer(self.lr).apply_gradients(zip(self.actor_gradients, self.mu_vars))
 
 
 ### actor networks for simulating other agents
@@ -128,7 +129,7 @@ class DDPGActorCritic(object):
 
 ### critic network
   def add_critic_network_placeholders_op(self):
-    #TODO: add a placeholder for all agent's action stacked, shape = (None, num_agents, action_dim)
+    #TODO: add a placeholder for all agent's action stacked, shape = (None, num_agents,) if discrete, shape=(None, num_agents, action_dim) otherwise
     self.actions_n_placeholder = #TODO
     # add placeholders for update_critic_network_op
     self.y_placeholder = #TODO
@@ -243,28 +244,55 @@ class DDPGActorCritic(object):
         q_values.append()
 
 
-  def update_actor_network(self, samples):
+  def update_actor_network(self, observation, actions_n, state):
     """
 
-    :param samples:
+    :param
+        observation: batched observations for current agent, shape=(None, observation_dim)
+        actions_n: batched n-agent actions
+                            shape=(None, num_agent,) if discrete
+                            shape=(None, num_agent, action_dim) otherwise
+        state: shape=(None, num_agent, observation_dim)
     TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
     :return:
     """
-    #TODO
+    q_values = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
+                                                self.actions_n_placeholder : actions_n})
+    _, action_logits = self.get_action_and_logits(observation)
+    self.sess.run(self.train_actor_op, feed_dict={self.observation_placeholder : observation,
+                                                  self.action_logits_placeholder : action_logits,
+                                                  self.q_value_placeholder_for_policy_gradient : q_values})
+
+
+
+  def get_action_and_logits(self, observations):
+    """
+    Run
+    :param observations: batched observations
+    :return: action: if discrete, shape = (None,)
+                     otherwise, shape=(None, action_dim)
+             action_logits: shape=(None, action_dim)
+                            for discrete case, this is direct output of mu
+                            for none-discrete case, this is the same as action
+    """
+    action_logits = self.sess.run(self.mu, feed_dict={self.observation_placeholder: observations})
+    actions = action_logits
+    if self.config.discrete:
+      actions = tf.argmax(action_logits, axis=1)
+      # actions = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+    return actions, action_logits
 
   def get_sampled_action(self, observation):
     """
-    Run self.sample_action op
+    Get a single action for a single observation, used for stepping the environment
 
     :param observation: single observation to run self.sampled_action with
-    :return: action
+    :return: action: if discrete, output is a single number
+                     otherwise, shape=(action_dim)
     """
     batch = np.expand_dims(observation, 0)
-    action_logits = self.sess.run(self.mu, feed_dict={self.observation_placeholder: batch})[0]
-    action = action_logits
-    if self.config.discrete:
-      action = tf.argmax(action_logits, axis=1)
-      # action = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+    actions, _ = self.get_action_and_logits(batch)
+    action = actions[0]
     return action
 
 
@@ -278,10 +306,11 @@ class DDPGActorCritic(object):
 
     """
 
-    observations, true_actions, rewards, _, _ = samples
+    state, true_actions, rewards, _, _ = samples
     # update this agent's policy approx networks for other agents
-    observations_by_agent = np.swapaxes(observations, 0, 1) # shape (num_agent, batch_size, observation_dim)
+    observations_by_agent = np.swapaxes(state, 0, 1) # shape (num_agent, batch_size, observation_dim)
     true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
+    observation_for_current_agent = observations_by_agent[self.agent_idx]
     for i in self.env.n:
       obs = observations_by_agent[i]
       act = true_actions_by_agent[i]
@@ -299,7 +328,7 @@ class DDPGActorCritic(object):
     self.update_critic_network(samples, est_actions)
 
     # update actor network
-    self.update_actor_network(samples)
+    self.update_actor_network(observation_for_current_agent, true_actions, state)
 
     # update target networks
     self.sess.run(self.update_target_op, feed_dict={})
