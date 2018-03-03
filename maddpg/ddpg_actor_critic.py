@@ -66,23 +66,26 @@ class DDPGActorCritic(object):
 ### actor network
   def add_actor_network_placeholders_op(self):
     self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+    self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
   def build_policy_network_op(self, scope = "policy_network"):
     """
     Builds the policy network.
     """
-    if self.config.discrete:
-        action_logits = build_mlp(self.observation_placeholder, self.action_dim, scope)
-        # self.chosen_action = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
-        self.chosen_action = tf.argmax(action_logits, axis=1)
-    else:
-      self.chosen_action = build_mlp(self.observation_placeholder, self.action_dim, scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+    mu_scope = "mu"
+    target_mu_scope = "target_mu"
+    with tf.variable_scope(scope):
+      self.mu = build_mlp(self.observation_placeholder, self.action_dim, mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+      self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, target_mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+
 
   def add_actor_gradients_op(self):
     """
     http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
     :return: None
     """
+    action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_placeholder)
+    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, )
     self.actor_gradients = # TODO
 
   def add_optimizer_op(self):
@@ -186,6 +189,7 @@ class DDPGActorCritic(object):
       # add shared placeholders
       self.add_placeholders_op()
       # create actor net
+      self.add_actor_network_placeholders_op()
       self.build_policy_network_op()
       self.add_actor_gradients_op()
       self.add_optimizer_op()
@@ -244,7 +248,11 @@ class DDPGActorCritic(object):
     :return: action
     """
     batch = np.expand_dims(observation, 0)
-    action = self.sess.run(self.chosen_action, feed_dict={self.observation_placeholder: batch})[0]
+    action_logits = self.sess.run(self.mu, feed_dict={self.observation_placeholder: batch})[0]
+    action = action_logits
+    if self.config.discrete:
+      action = tf.argmax(action_logits, axis=1)
+      # action = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
     return action
 
 
@@ -265,6 +273,7 @@ class DDPGActorCritic(object):
     for i in self.env.n:
       obs = observations_by_agent[i]
       act = true_actions_by_agent[i]
+      #TODO: may need to re-think this after implementing update_policy_approx_networks_op
       self.sess.run(self.update_policy_approx_networks_op, feed_dict={self.observation_placeholder : obs,
                                                                     self.action_placeholder : act})
 
