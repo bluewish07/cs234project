@@ -16,6 +16,9 @@ class DDPGActorCritic(object):
         This is for a single agent used in MADDPG setting, therefore we need:
         an approximation policy network for each other agent
 
+        IMPORTANT: all the actions we use in this network are vectors of length action_dim.
+                   for discrete case, actions are one-hot vectors
+
   """
 
   def __init__(self, agent_idx, env, configuration, logger=None):
@@ -61,10 +64,7 @@ class DDPGActorCritic(object):
   def add_placeholders_op(self):
     self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
     self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
-    if self.config.discrete:
-      self.action_placeholder = tf.placeholder(tf.int32, shape=(None))
-    else:
-      self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
+    self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
     self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
 
 
@@ -114,7 +114,13 @@ class DDPGActorCritic(object):
     :return: None
     """
     policy_approximates = []
-    # TODO
+    with tf.variable_scope("policy_approx_networks"):
+      for i in range(self.env.n):
+        if i == self.agent_idx: continue
+        scope = "agent_" + str(i)
+        approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
+                             self.config.layer_size)
+        policy_approximates.append(approx)
     self.policy_approximates = policy_approximates
 
   def add_update_policy_approx_network_op(self):
@@ -266,8 +272,7 @@ class DDPGActorCritic(object):
     """
     Run
     :param observations: batched observations
-    :return: action: if discrete, shape = (None,)
-                     otherwise, shape=(None, action_dim)
+    :return: action: shape=(None, action_dim). if discrete, a single action is one-hot vector
              action_logits: shape=(None, action_dim)
                             for discrete case, this is direct output of mu
                             for none-discrete case, this is the same as action
@@ -275,8 +280,9 @@ class DDPGActorCritic(object):
     action_logits = self.sess.run(self.mu, feed_dict={self.observation_placeholder: observations})
     actions = action_logits
     if self.config.discrete:
-      actions = tf.argmax(action_logits, axis=1)
-      # actions = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+      action_indices = tf.argmax(action_logits, axis=1)
+      # action_indices = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+      actions = tf.one_hot(action_indices, self.action_dim)
     return actions, action_logits
 
   def get_sampled_action(self, observation):
