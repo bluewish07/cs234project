@@ -48,6 +48,11 @@ class DDPGActorCritic(object):
 
       self.lr = self.config.learning_rate
 
+      # top level scopes
+      self.actor_network_scope = "actor_network"
+      self.critic_network_scope = "critic_network"
+
+
 
 
 
@@ -68,23 +73,28 @@ class DDPGActorCritic(object):
     self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
     self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
-  def build_policy_network_op(self, scope = "policy_network"):
+  def build_policy_network_op(self, scope=None):
     """
     Builds the policy network.
     """
-    mu_scope = "mu"
-    target_mu_scope = "target_mu"
+    if scope is None:
+      scope = self.actor_network_scope
+    self.mu_scope = "mu"
+    self.target_mu_scope = "target_mu"
     with tf.variable_scope(scope):
-      self.mu = build_mlp(self.observation_placeholder, self.action_dim, mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
-      self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, target_mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+      self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+      self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
 
 
-  def add_actor_gradients_op(self):
+  def add_actor_gradients_op(self, scope=None):
     """
     http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
     :return: None
     """
+    if scope is None:
+      scope = self.actor_network_scope
     action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_placeholder)
+    mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, q_scope)
     batch_actor_gradients = tf.gradients(self.action_logits_placeholder, )
     self.actor_gradients = # TODO
 
@@ -124,13 +134,15 @@ class DDPGActorCritic(object):
     self.y_placeholder = #TODO
     self.q_baseline_placeholder = #TODO
 
-  def add_critic_network_op(self, scope="critic_network"):
+  def add_critic_network_op(self, scope=None):
     """
     Build critic network. Assign it to self.q, self.target_q
     :param scope: variable scope used for parameters in this network
     :return: None
     """
     #TODO: need to fix
+    if scope is None:
+      scope = self.critic_network_scope
     q_scope = "q"
     target_q_scope = "target_q"
     with tf.variable_scope(scope):
