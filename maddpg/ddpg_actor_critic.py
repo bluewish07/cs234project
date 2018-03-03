@@ -161,32 +161,29 @@ class DDPGActorCritic(object):
 
 
 ### update target networks
-  def add_update_target_op(self, scope, target_scope):
+  def get_assign_ops(self, scope, target_scope):
+    op_list = list()
+
+    vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+    target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_scope)
+    vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in vars])
+    target_vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in target_vars])
+    for var_name_suffix, var in vars_by_name_suffix.iteritems():
+      target_var = target_vars_by_name_suffix[var_name_suffix]
+      new_target_var = self.config.tau * var + (1 - self.config.tau) * target_var
+      assign_op = tf.assign(target_var, new_target_var)
+      op_list.append(assign_op)
+
+    return op_list
+
+  def add_update_target_op(self):
       """
       update_target_op will be called periodically
       to update target network weights based on the constantly-changing network
       target_theta <- tau * theta + (1-tau) * target_theta
 
-
-      Args:
-          scope: (string) name of the scope of variables for the most up-to-date network
-          target_scope: (string) name of the scope of variables
-                      for the target network
       """
-      #TODO below needs to be updated
-      op_list = list()
-
-      q_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, q_scope)
-      target_q_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_q_scope)
-      q_vars_by_name_suffix = dict([(q_var.name[q_var.name.find('/'):], q_var) for q_var in q_vars])
-      target_q_vars_by_name_suffix = dict([(var.name[var.name.find('/'):], var) for var in target_q_vars])
-      for q_var_name_suffix, q_var in q_vars_by_name_suffix.iteritems():
-          # q_var = tf.Print(q_var, [q_var], "current_q", summarize=20)
-          target_q_var = target_q_vars_by_name_suffix[q_var_name_suffix]
-          # target_q_var = tf.Print(target_q_var, [target_q_var], "target before", summarize=20)
-          target_q_var = tf.assign(target_q_var, q_var)
-          # target_q_var = tf.Print(target_q_var, [target_q_var], "target after", summarize=20)
-          op_list.append(target_q_var)
+      op_list = self.get_assign_ops(self.q_scope, self.target_q_scope) + self.get_assign_ops(self.mu_scope, self.target_mu_scope)
 
       self.update_target_op = tf.group(*op_list)
 
