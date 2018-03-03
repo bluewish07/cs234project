@@ -56,16 +56,27 @@ class DDPGActorCritic(object):
   def add_placeholders_op(self):
     self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
     self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
-    self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
+    if self.config.discrete:
+      self.action_placeholder = tf.placeholder(tf.int32, shape=(None))
+    else:
+      self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
     self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
 
 
 ### actor network
+  def add_actor_network_placeholders_op(self):
+    self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+
   def build_policy_network_op(self, scope = "policy_network"):
     """
     Builds the policy network.
     """
-    self.chosen_action =         build_mlp(self.observation_placeholder, self.action_dim, scope)
+    if self.config.discrete:
+        action_logits = build_mlp(self.observation_placeholder, self.action_dim, scope)
+        # self.chosen_action = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
+        self.chosen_action = tf.argmax(action_logits, axis=1)
+    else:
+      self.chosen_action = build_mlp(self.observation_placeholder, self.action_dim, scope, n_layers=self.config.n_layers, size=self.config.layer_size)
 
   def add_actor_gradients_op(self):
     """
