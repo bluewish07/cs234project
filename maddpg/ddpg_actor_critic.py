@@ -137,15 +137,15 @@ class DDPGActorCritic(object):
 
   def add_critic_network_op(self, scope=None):
     """
-    Build critic network. Assign it to self.q, self.target_q
+    Build critic network. Assign it to self.q, self.target_q.
     :param scope: variable scope used for parameters in this network
     :return: None
     """
-    #TODO: need to fix
     if scope is None:
       scope = self.critic_network_scope
-    q_scope = "q"
-    target_q_scope = "target_q"
+    self.q_scope = "q"
+    self.target_q_scope = "target_q"
+    #TODO: need to fix below
     with tf.variable_scope(scope):
       if self.discrete:
         self.q = build_mlp(self.observation_placeholder, self.action_dim, scope=q_scope)
