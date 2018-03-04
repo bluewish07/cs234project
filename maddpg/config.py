@@ -25,6 +25,7 @@ class config():
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
     tau = 0.01
+    random_process_exploration = True
     use_baseline = True 
     normalize_advantage=True
     replay_buffer_size = 1000000

@@ -335,8 +335,13 @@ class DDPGActorCritic(object):
                      otherwise, shape=(action_dim)
     """
     batch = np.expand_dims(observation, 0)
-    actions, _ = self.get_action_and_logits(batch)
+    actions, action_logits = self.get_action_and_logits(batch)
     action = actions[0]
+    if self.config.random_process_exploration:
+      with tf.variable_scope("agent_" + str(self.agent_idx)):
+        log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
+        dist = tf.contrib.distributions.MultivariateNormalDiag(action_logits, tf.exp(log_std))
+        action = dist.sample()[0]
     return action
 
 
@@ -360,8 +365,16 @@ class DDPGActorCritic(object):
     # get an estimated action from each agent approx network
     # Specifically, for the current agent, get the action from the target policy network
     # for all other agents, get the action from the approx network
-    #TODO
-    est_actions = #TODO # shape = (None, num_agent, action_dim)
+    est_actions_by_agent = []
+    for i in range(self.env.n):
+      observations_i = observations_by_agent[i]
+      actions_i = None
+      if i == self.agent_idx:
+        actions_i = self.sess.run(self.target_mu, feed_dict={self.observation_placeholder : observations_i})
+      else:
+        actions_i = self.sess.run(self.policy_approximates[i], feed_dict={self.observation_placeholder : observations_i})
+      est_actions_by_agent.append(actions_i)
+    est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
 
     # update centralized Q network
     self.update_critic_network(samples, est_actions)
