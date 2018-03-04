@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 class config():
+    # https://github.com/openai/maddpg
     env_name = "simple_spread"
     algo_name = "MADDPG"
     record           = False
@@ -17,9 +18,10 @@ class config():
     
     # model and training config
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
-    num_batches = 200 # number of batches trained on 
-    batch_size = 1000 # number of samples used to compute each policy update
-    max_ep_len = 1000 # maximum episode length
+    num_batches = 60 # number of batches trained on
+    batch_size_in_episodes = 1024 # number of samples used to compute each policy update
+    max_ep_len = 25 # maximum episode length
+    batch_size = batch_size_in_episodes * max_ep_len
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
     learning_rate = 0.01
     gamma              = .95 # the discount factor
