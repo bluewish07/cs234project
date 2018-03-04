@@ -159,7 +159,7 @@ class DDPGActorCritic(object):
 
 ### critic network
   def add_critic_network_placeholders_op(self):
-    #TODO: add a placeholder for all agent's action stacked, shape = (None, num_agents,) if discrete, shape=(None, num_agents, action_dim) otherwise
+    #TODO: add a placeholder for all agent's action stacked, shape=(None, num_agents, action_dim) 
     self.actions_n_placeholder = #TODO
     # add placeholders for update_critic_network_op
     self.y_placeholder = #TODO
