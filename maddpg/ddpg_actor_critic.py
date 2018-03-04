@@ -8,7 +8,6 @@ from config import config
 from utils.general import get_logger, export_plot
 from utils.network import build_mlp
 
-#TODO: random process N for action exploration
 
 class DDPGActorCritic(object):
   """
@@ -178,13 +177,9 @@ class DDPGActorCritic(object):
     self.target_q_scope = "target_q"
     #TODO: need to fix below
     with tf.variable_scope(scope):
-      if self.discrete:
-        self.q = build_mlp(self.observation_placeholder, self.action_dim, scope=q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
-        self.target_q = build_mlp(self.observation_placeholder, self.action_dim, scope=target_q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
-      else:
-        input = tf.concat([self.observation_placeholder, self.action_placeholder], axis=1)
-        self.q = build_mlp(input, 1, scope=q_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
-        self.target_q = build_mlp(input, 1, scope=target_q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
+      input = tf.concat([self.state_placeholder, self.actions_n_placeholder], axis=1)
+      self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
+      self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
   def add_update_critic_network_op(self):
     loss = tf.losses.mean_squared_error(self.y_placeholder, self.q_baseline_placeholder)
@@ -281,7 +276,7 @@ class DDPGActorCritic(object):
       self.sess.run(update_approx_network, feed_dict={self.action_placeholder : act,
                                                       self.action_logits_placeholder : action_logits})
 
-  def update_critic_network(self, samples, estimated_actions):
+  def update_critic_network(self, state, observations_by_agent, next_state, next_observations_by_agent, rewards):
     """
     Update the critic network
     Args:
@@ -289,19 +284,45 @@ class DDPGActorCritic(object):
                 obs_batch: np.array of shape (None, num_agent, observation_dim)
     TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
     """
-    #TODO fix and finish
-    q_values = []
-    batched_next_obs = np.array(samples[3])
-    batched_r = np.array(samples[2])
-    done_mask = samples[4]
-    if self.discrete:
-        target_q_values = self.sess.run(self.target_q, feed_dict={self.observation_placeholder: batched_next_obs})
-        a_indices = np.array(list(enumerate(samples[1])))
-        target_q_a_values = tf.gather_nd(target_q_values, a_indices)
-        q_samp = batched_r + self.config.gamma * target_q_a_values * tf.cast(tf.logical_not(self.done_mask),
-                                                                             dtype=tf.float32)
-    for sample in samples:
-        q_values.append()
+    # get the next estimated action from each agent approx network given next observation
+    # Specifically, for the current agent, get the next action from the target policy network
+    # for all other agents, get the action from the approx network
+    est_next_actions_by_agent = []
+    for i in range(self.env.n):
+        next_observations_i = next_observations_by_agent[i]
+        next_actions_i = None
+        if i == self.agent_idx:
+            next_actions_i = self.sess.run(self.target_mu, feed_dict={self.observation_placeholder: next_observations_i})
+        else:
+            next_actions_i = self.sess.run(self.policy_approximates[i],
+                                      feed_dict={self.observation_placeholder: next_observations_i})
+            est_next_actions_by_agent.append(next_actions_i)
+    est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
+
+    q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
+                                                     self.actions_n_placeholder : est_next_actions})
+    y = rewards + self.config.gamma * q_next * tf.cast(tf.logical_not(self.done_mask), dtype=tf.float32)
+
+    # Then get an estimated action from each agent approx network given current observation
+    # Specifically, for the current agent, get the action from the policy network
+    # for all other agents, get the action from the approx network
+    est_actions_by_agent = []
+    for i in range(self.env.n):
+        observations_i = observations_by_agent[i]
+        actions_i = None
+        if i == self.agent_idx:
+            actions_i = self.sess.run(self.mu, feed_dict={self.observation_placeholder: observations_i})
+        else:
+            actions_i = self.sess.run(self.policy_approximates[i],
+                                      feed_dict={self.observation_placeholder: observations_i})
+        est_actions_by_agent.append(actions_i)
+    est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
+
+    q_baseline = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
+                                                  self.actions_n_placeholder : est_actions})
+    self.sess.run(self.update_critic_op, feed_dict={self.y_placeholder : y,
+                                                    self.q_baseline_placeholder : q_baseline})
+
 
 
   def update_actor_network(self, observation, actions_n, state):
@@ -371,29 +392,18 @@ class DDPGActorCritic(object):
 
     """
 
-    state, true_actions, rewards, _, _ = samples
+    state, true_actions, rewards, next_state, _ = samples
     # update this agent's policy approx networks for other agents
     observations_by_agent = np.swapaxes(state, 0, 1) # shape (num_agent, batch_size, observation_dim)
     true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
+    rewards_by_agent = np.swapaxes(rewards, 0, 1)
+    next_observations_by_agent = np.swapaxes(next_state, 0, 1)
     observation_for_current_agent = observations_by_agent[self.agent_idx]
+    reward_for_current_agent = rewards_by_agent[self.agent_idx]
     self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
-    # get an estimated action from each agent approx network
-    # Specifically, for the current agent, get the action from the target policy network
-    # for all other agents, get the action from the approx network
-    est_actions_by_agent = []
-    for i in range(self.env.n):
-      observations_i = observations_by_agent[i]
-      actions_i = None
-      if i == self.agent_idx:
-        actions_i = self.sess.run(self.target_mu, feed_dict={self.observation_placeholder : observations_i})
-      else:
-        actions_i = self.sess.run(self.policy_approximates[i], feed_dict={self.observation_placeholder : observations_i})
-      est_actions_by_agent.append(actions_i)
-    est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
-
     # update centralized Q network
-    self.update_critic_network(samples, est_actions)
+    self.update_critic_network(state, observations_by_agent, next_state, next_observations_by_agent,rewards)
 
     # update actor network
     self.update_actor_network(observation_for_current_agent, true_actions, state)
