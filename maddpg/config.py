@@ -23,6 +23,7 @@ class config():
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
     learning_rate = 0.01
     gamma              = .95 # the discount factor
+    policy_approx_lambda = .001
     tau = 0.01
     use_baseline = True 
     normalize_advantage=True

@@ -52,6 +52,7 @@ class DDPGActorCritic(object):
       self.lr = self.config.learning_rate
 
       # top level scopes
+      self.policy_approx_networks_scope = "policy_approx_networks"
       self.actor_network_scope = "actor_network"
       self.critic_network_scope = "critic_network"
 
@@ -65,13 +66,13 @@ class DDPGActorCritic(object):
     self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
     self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
     self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
+    self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
     self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
 
 
 ### actor network
   def add_actor_network_placeholders_op(self):
     self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
-    self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
   def build_policy_network_op(self, scope=None):
     """
@@ -114,23 +115,46 @@ class DDPGActorCritic(object):
     :return: None
     """
     policy_approximates = []
-    with tf.variable_scope("policy_approx_networks"):
+    log_stds = []
+    with tf.variable_scope(self.policy_approx_networks_scope):
       for i in range(self.env.n):
-        if i == self.agent_idx: continue
+        if i == self.agent_idx:
+          policy_approximates.append(None)
+          log_stds.append(None)
+          continue
         scope = "agent_" + str(i)
         approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
                              self.config.layer_size)
         policy_approximates.append(approx)
-    self.policy_approximates = policy_approximates
+        with tf.variable_scope(scope):
+          log_std = tf.get_variable("log_std", shape=[self.action_dim], dtype=tf.float32)
+          log_stds.append(log_std)
 
-  def add_update_policy_approx_network_op(self):
+    self.policy_approximates = policy_approximates
+    self.policy_approx_log_stds = log_stds
+
+  def add_update_policy_approx_networks_op(self):
     """
-    Add operation to update a single policy approximation network.
-    When running, we will repeat this op for each agent approx network.
+    Add operation to update all policy approximation networks.
     See section 4.2 Inferring Policies of Other Agents for loss function and other info
     :return: None
     """
-    self.update_policy_approx_network_op = # TODO
+
+    update_ops = []
+    for i in range(self.env.n):
+        if i == self.agent_idx:
+          update_ops.append(None)
+          continue
+        log_std = self.policy_approx_log_stds[i]
+        #TODO later: we can try other distributions as well?
+        dist = tf.contrib.distributions.MultivariateNormalDiag(self.action_logits_placeholder, tf.exp(log_std))
+        logprob = dist.log_prob(self.action_placeholder)
+        entropy = dist.entropy()
+        loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * entropy)
+        update = tf.train.AdamOptimizer(self.lr).minimize(loss)
+        update_ops.append(update)
+
+    self.update_policy_approx_networks_op = update_ops
 
 
 ### critic network
@@ -210,8 +234,9 @@ class DDPGActorCritic(object):
       self.add_actor_gradients_op()
       self.add_optimizer_op()
       # create actor approx nets
+      self.add_policy_approx_networks_placeholders_op()
       self.build_policy_approx_networks()
-      self.add_update_policy_approx_nets_op()
+      self.add_update_policy_approx_networks_op()
       # create critic net
       self.add_critic_network_placeholders_op()
       self.add_critic_network_op()
@@ -223,6 +248,22 @@ class DDPGActorCritic(object):
 
 
   #################### Running the model ######################
+  def update_policy_approx_networks(self, observations_by_agent, actions_by_agent):
+    """
+
+    :param observations_by_agent: shape (num_agent, batch_size, observation_dim)
+    :param actions_by_agent: shape (num_agent, batch_size, action_dim)
+    :return:
+    """
+    for i in self.env.n:
+      if i == self.agent_idx: continue
+      obs = observations_by_agent[i]
+      act = actions_by_agent[i]
+      approx_network = self.policy_approximates[i]
+      action_logits = self.sess.run(approx_network, feed_dict={self.observation_placeholder: obs})
+      update_approx_network = self.update_policy_approx_networks_op[i]
+      self.sess.run(update_approx_network, feed_dict={self.action_placeholder : act,
+                                                      self.action_logits_placeholder : action_logits})
 
   def update_critic_network(self, samples, estimated_actions):
     """
@@ -314,12 +355,7 @@ class DDPGActorCritic(object):
     observations_by_agent = np.swapaxes(state, 0, 1) # shape (num_agent, batch_size, observation_dim)
     true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
     observation_for_current_agent = observations_by_agent[self.agent_idx]
-    for i in self.env.n:
-      obs = observations_by_agent[i]
-      act = true_actions_by_agent[i]
-      #TODO: may need to re-think this after implementing update_policy_approx_networks_op
-      self.sess.run(self.update_policy_approx_networks_op, feed_dict={self.observation_placeholder : obs,
-                                                                    self.action_placeholder : act})
+    self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
     # get an estimated action from each agent approx network
     # Specifically, for the current agent, get the action from the target policy network
