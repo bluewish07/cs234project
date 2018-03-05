@@ -160,10 +160,11 @@ class DDPGActorCritic(object):
 ### critic network
   def add_critic_network_placeholders_op(self):
     #TODO: add a placeholder for all agent's action stacked, shape=(None, num_agents, action_dim) 
-    self.actions_n_placeholder = #TODO
-    # add placeholders for update_critic_network_op
-    self.y_placeholder = #TODO
-    self.q_baseline_placeholder = #TODO
+    with tf.variable_scope(self.critic_network_scope):
+        self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.action_dim)   #TODO
+        # add placeholders for update_critic_network_op
+        self.y_placeholder = tf.placeholder(tf.float32, shape=(None))   #TODO
+        self.q_baseline_placeholder = tf.placeholder(tf.float32, shape=(None))  #TODO
 
   def add_critic_network_op(self, scope=None):
     """
