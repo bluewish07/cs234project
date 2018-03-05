@@ -72,7 +72,8 @@ class DDPGActorCritic(object):
 
 ### actor network
   def add_actor_network_placeholders_op(self):
-    self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+    with tf.variable_scope(self.actor_network_scope):
+      self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
 
   def build_policy_network_op(self, scope=None):
     """
@@ -97,7 +98,7 @@ class DDPGActorCritic(object):
     action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
     combined_scope = scope + "/" + self.mu_scope
     self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -action_gradient)
+    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * action_gradient)
     self.actor_gradients = tf.reduce_mean(batch_actor_gradients, axis=0)
 
   def add_optimizer_op(self):
@@ -159,12 +160,11 @@ class DDPGActorCritic(object):
 
 ### critic network
   def add_critic_network_placeholders_op(self):
-    #TODO: add a placeholder for all agent's action stacked, shape=(None, num_agents, action_dim) 
     with tf.variable_scope(self.critic_network_scope):
-        self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.action_dim)   #TODO
+        self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.action_dim))
         # add placeholders for update_critic_network_op
-        self.y_placeholder = tf.placeholder(tf.float32, shape=(None))   #TODO
-        self.q_baseline_placeholder = tf.placeholder(tf.float32, shape=(None))  #TODO
+        self.y_placeholder = tf.placeholder(tf.float32, shape=(None))
+        self.q_baseline_placeholder = tf.placeholder(tf.float32, shape=(None))
 
   def add_critic_network_op(self, scope=None):
     """
