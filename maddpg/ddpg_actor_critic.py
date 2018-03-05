@@ -72,7 +72,8 @@ class DDPGActorCritic(object):
 ### actor network
   def add_actor_network_placeholders_op(self):
     with tf.variable_scope(self.actor_network_scope):
-      self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+      #self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+      self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
   def build_policy_network_op(self, scope=None):
     """
@@ -94,10 +95,10 @@ class DDPGActorCritic(object):
     """
     if scope is None:
       scope = self.actor_network_scope
-    action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
+    # action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
     combined_scope = scope + "/" + self.mu_scope
     self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * action_gradient)
+    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
     self.actor_gradients = tf.reduce_mean(batch_actor_gradients, axis=0)
 
   def add_optimizer_op(self):
@@ -175,7 +176,6 @@ class DDPGActorCritic(object):
       scope = self.critic_network_scope
     self.q_scope = "q"
     self.target_q_scope = "target_q"
-    #TODO: need to fix below
     with tf.variable_scope(scope):
       input = tf.concat([self.state_placeholder, self.actions_n_placeholder], axis=1)
       self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
@@ -339,10 +339,12 @@ class DDPGActorCritic(object):
     """
     q_values = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
                                                 self.actions_n_placeholder : actions_n})
+    action_gradient = tf.gradients(q_values, self.action_logits_placeholder)
     _, action_logits = self.get_action_and_logits(observation)
-    self.sess.run(self.train_actor_op, feed_dict={self.observation_placeholder : observation,
+    self.sess.run(self.train_actor_op, feed_dict={
                                                   self.action_logits_placeholder : action_logits,
-                                                  self.q_value_placeholder_for_policy_gradient : q_values})
+                                                  self.action_gradients_placeholder : action_gradient})
+                                                  #self.q_value_placeholder_for_policy_gradient : q_values})
 
 
 
