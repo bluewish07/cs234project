@@ -34,11 +34,11 @@ def build_mlp(
     #######################################################
     #########   YOUR CODE HERE - 7-20 lines.   ############
     with tf.variable_scope(scope):
-        n = layers.flatten(mlp_input)
+        n = tf.layers.flatten(mlp_input)
         for _ in range(n_layers):
-            n = layers.fully_connected(n, num_outputs=size, activation_fn=tf.nn.relu, weights_initializer=tf.random_uniform_initializer(0, 0.01))
-        
-        out = layers.fully_connected(n, num_outputs=output_size, activation_fn=None)
+            n = tf.contrib.layers.fully_connected(n, num_outputs=size, activation_fn=tf.nn.relu)
+
+        out = tf.contrib.layers.fully_connected(n, num_outputs=output_size, activation_fn=output_activation)
 
     return out
     #######################################################
