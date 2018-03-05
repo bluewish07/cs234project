@@ -245,6 +245,21 @@ class DDPGActorCritic(object):
       self.add_update_target_op()
 
 
+  def initialize(self, session=None):
+    """
+    Assumes the graph has been constructed (have called self.build())
+    Creates a tf Session and run initializer of variables
+
+    You don't have to change or use anything here.
+    """
+    # create tf session if not given
+    if session is None:
+      self.sess = tf.Session()
+    else:
+      self.sess = session
+    # initiliaze all variables
+    init = tf.global_variables_initializer()
+    self.sess.run(init)
 
 
   #################### Running the model ######################
