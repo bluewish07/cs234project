@@ -179,12 +179,12 @@ class DDPGActorCritic(object):
     #TODO: need to fix below
     with tf.variable_scope(scope):
       if self.discrete:
-        self.q = build_mlp(self.observation_placeholder, self.action_dim, scope=q_scope)
-        self.target_q = build_mlp(self.observation_placeholder, self.action_dim, scope=target_q_scope)
+        self.q = build_mlp(self.observation_placeholder, self.action_dim, scope=q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
+        self.target_q = build_mlp(self.observation_placeholder, self.action_dim, scope=target_q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
       else:
         input = tf.concat([self.observation_placeholder, self.action_placeholder], axis=1)
-        self.q = build_mlp(input, 1, scope=q_scope)
-        self.target_q = build_mlp(input, 1, scope=target_q_scope)
+        self.q = build_mlp(input, 1, scope=q_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
+        self.target_q = build_mlp(input, 1, scope=target_q_scope,n_layers=self.config.n_layers, size=self.config.layer_size)
 
   def add_update_critic_network_op(self):
     loss = tf.losses.mean_squared_error(self.y_placeholder, self.q_baseline_placeholder)
