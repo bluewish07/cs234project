@@ -139,7 +139,7 @@ class DDPGActorCritic(object):
       self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
   def add_update_critic_network_op(self):
-    y = self.reward_placeholder + self.config.gamma * self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask), dtype=tf.float32)
+    y = self.reward_placeholder + self.config.gamma * self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask_placeholder), dtype=tf.float32)
     loss = tf.losses.mean_squared_error(y, self.q)
     self.update_critic_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
 
