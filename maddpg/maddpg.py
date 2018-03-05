@@ -46,7 +46,7 @@ class MADDPG(object):
     for idx, agent_net in enumerate(self.agent_networks):
       var_scope = "agent_" + str(idx)
       with tf.variable_scope(var_scope):
-        agent_net.build()
+        agent_net.build(var_scope)
 
   def initialize(self):
     sess = tf.Session()

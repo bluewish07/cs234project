@@ -72,34 +72,30 @@ class DDPGActorCritic(object):
 ### actor network
   def add_actor_network_placeholders_op(self):
     with tf.variable_scope(self.actor_network_scope):
-      #self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+      # self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
       self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
-  def build_policy_network_op(self, scope=None):
+  def build_policy_network_op(self):
     """
     Builds the policy network.
     """
-    if scope is None:
-      scope = self.actor_network_scope
     self.mu_scope = "mu"
     self.target_mu_scope = "target_mu"
-    with tf.variable_scope(scope):
+    with tf.variable_scope(self.actor_network_scope):
       self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
       self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
 
 
-  def add_actor_gradients_op(self, scope=None):
+  def add_actor_gradients_op(self):
     """
     http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
     :return: None
     """
-    if scope is None:
-      scope = self.actor_network_scope
     # action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
-    combined_scope = scope + "/" + self.mu_scope
+    combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
     self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
     batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
-    self.actor_gradients = tf.reduce_mean(batch_actor_gradients, axis=0)
+    self.actor_gradients = tf.reduce_mean(tf.stack(batch_actor_gradients), axis=0)
 
   def add_optimizer_op(self):
     """
@@ -166,17 +162,15 @@ class DDPGActorCritic(object):
         self.y_placeholder = tf.placeholder(tf.float32, shape=(None))
         self.q_baseline_placeholder = tf.placeholder(tf.float32, shape=(None))
 
-  def add_critic_network_op(self, scope=None):
+  def add_critic_network_op(self):
     """
     Build critic network. Assign it to self.q, self.target_q.
     :param scope: variable scope used for parameters in this network
     :return: None
     """
-    if scope is None:
-      scope = self.critic_network_scope
     self.q_scope = "q"
     self.target_q_scope = "target_q"
-    with tf.variable_scope(scope):
+    with tf.variable_scope(self.critic_network_scope):
       input = tf.concat([self.state_placeholder, self.actions_n_placeholder], axis=1)
       self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
       self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
@@ -209,18 +203,23 @@ class DDPGActorCritic(object):
       target_theta <- tau * theta + (1-tau) * target_theta
 
       """
-      op_list = self.get_assign_ops(self.q_scope, self.target_q_scope) + self.get_assign_ops(self.mu_scope, self.target_mu_scope)
+      combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
+      combined_target_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.target_q_scope
+      combined_mu_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+      combined_target_mu_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.target_mu_scope
+      op_list = self.get_assign_ops(combined_q_scope, combined_target_q_scope) + self.get_assign_ops(combined_mu_scope, combined_target_mu_scope)
 
       self.update_target_op = tf.group(*op_list)
 
 
-  def build(self):
+  def build(self, agent_scope):
       """
       Build model by adding all necessary variables
 
       You don't have to change anything here - we are just calling
       all the operations you already defined to build the tensorflow graph.
       """
+      self.agent_scope = agent_scope # top level scope for this agent, will be needed when getting variables
 
       # add shared placeholders
       self.add_placeholders_op()
@@ -341,8 +340,7 @@ class DDPGActorCritic(object):
                                                 self.actions_n_placeholder : actions_n})
     action_gradient = tf.gradients(q_values, self.action_logits_placeholder)
     _, action_logits = self.get_action_and_logits(observation)
-    self.sess.run(self.train_actor_op, feed_dict={
-                                                  self.action_logits_placeholder : action_logits,
+    self.sess.run(self.train_actor_op, feed_dict={self.action_logits_placeholder : action_logits,
                                                   self.action_gradients_placeholder : action_gradient})
                                                   #self.q_value_placeholder_for_policy_gradient : q_values})
 
