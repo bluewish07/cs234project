@@ -69,42 +69,6 @@ class DDPGActorCritic(object):
     self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
 
 
-### actor network
-  def add_actor_network_placeholders_op(self):
-    with tf.variable_scope(self.actor_network_scope):
-      # self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
-      self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
-
-  def build_policy_network_op(self):
-    """
-    Builds the policy network.
-    """
-    self.mu_scope = "mu"
-    self.target_mu_scope = "target_mu"
-    with tf.variable_scope(self.actor_network_scope):
-      self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
-      self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope, n_layers=self.config.n_layers, size=self.config.layer_size)
-
-
-  def add_actor_gradients_op(self):
-    """
-    http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
-    :return: None
-    """
-    # action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
-    combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
-    self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    batch_actor_gradients = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
-    self.actor_gradients = tf.reduce_mean(tf.stack(batch_actor_gradients), axis=0)
-
-  def add_optimizer_op(self):
-    """
-    Apply self.actor_gradients
-    :return: None
-    """
-    self.train_actor_op = tf.train.AdamOptimizer(self.lr).apply_gradients(zip(self.actor_gradients, self.mu_vars))
-
-
 ### actor networks for simulating other agents
   def build_policy_approx_networks(self):
     """
@@ -171,7 +135,7 @@ class DDPGActorCritic(object):
     self.q_scope = "q"
     self.target_q_scope = "target_q"
     with tf.variable_scope(self.critic_network_scope):
-      input = tf.concat([self.state_placeholder, self.actions_n_placeholder], axis=1)
+      input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(self.actions_n_placeholder)], axis=1)
       self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
       self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
@@ -179,8 +143,48 @@ class DDPGActorCritic(object):
     loss = tf.losses.mean_squared_error(self.y_placeholder, self.q_baseline_placeholder)
     self.update_critic_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
 
+    ### actor network
+    # def add_actor_network_placeholders_op(self):
+    #   with tf.variable_scope(self.actor_network_scope):
+    #     # self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
+    #     #self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
-### update target networks
+    def build_policy_network_op(self):
+        """
+        Builds the policy network.
+        """
+        self.mu_scope = "mu"
+        self.target_mu_scope = "target_mu"
+        with tf.variable_scope(self.actor_network_scope):
+            self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
+                                n_layers=self.config.n_layers, size=self.config.layer_size)
+            self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
+                                       n_layers=self.config.n_layers, size=self.config.layer_size)
+
+    # def add_actor_gradients_op(self):
+    #   """
+    #   http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
+    #   :return: None
+    #   """
+    #   # action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
+    #   combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+    #   self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+    #   actor_gradients_summed_over_batch = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
+    #   self.actor_gradients = [grad / tf.shape(self.action_logits_placeholder)[0] for grad in actor_gradients_summed_over_batch]
+    #   # list(map(lambda x: tf.div(x, tf.shape(self.action_logits_placeholder)[0]), actor_gradients_summed_over_batch))
+
+    def add_optimizer_op(self):
+        """
+        Apply self.actor_gradients
+        :return: None
+        """
+        combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+        self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+        objective = -1.0 * self.q
+        self.train_actor_op = tf.train.AdamOptimizer(self.lr).minimize(objective, var_list=self.mu_vars)
+
+
+    ### update target networks
   def get_assign_ops(self, scope, target_scope):
     op_list = list()
 
@@ -223,19 +227,18 @@ class DDPGActorCritic(object):
 
       # add shared placeholders
       self.add_placeholders_op()
-      # create actor net
-      self.add_actor_network_placeholders_op()
-      self.build_policy_network_op()
-      self.add_actor_gradients_op()
-      self.add_optimizer_op()
       # create actor approx nets
-      self.add_policy_approx_networks_placeholders_op()
       self.build_policy_approx_networks()
       self.add_update_policy_approx_networks_op()
       # create critic net
       self.add_critic_network_placeholders_op()
       self.add_critic_network_op()
       self.add_update_critic_network_op()
+      # create actor net
+      # self.add_actor_network_placeholders_op()
+      self.build_policy_network_op()
+      # self.add_actor_gradients_op()
+      self.add_optimizer_op() # depends on self.q
 
       self.add_update_target_op()
 
@@ -336,13 +339,15 @@ class DDPGActorCritic(object):
     TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
     :return:
     """
-    q_values = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
-                                                self.actions_n_placeholder : actions_n})
-    action_gradient = tf.gradients(q_values, self.action_logits_placeholder)
-    _, action_logits = self.get_action_and_logits(observation)
-    self.sess.run(self.train_actor_op, feed_dict={self.action_logits_placeholder : action_logits,
-                                                  self.action_gradients_placeholder : action_gradient})
-                                                  #self.q_value_placeholder_for_policy_gradient : q_values})
+    # q_values = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
+    #                                             self.actions_n_placeholder : actions_n})
+    # action_gradient = tf.gradients(q_values, self.action_logits_placeholder)
+    # _, action_logits = self.get_action_and_logits(observation)
+    # self.sess.run(self.train_actor_op, feed_dict={self.action_logits_placeholder : action_logits,
+    #                                               self.action_gradients_placeholder : action_gradient})
+    #                                               #self.q_value_placeholder_for_policy_gradient : q_values})
+    self.sess.run(self.train_actor_op, feed_cit={self.state_placeholder : state,
+                                                 self.actions_n_placeholder : actions_n})
 
 
 
