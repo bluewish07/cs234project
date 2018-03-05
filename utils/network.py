@@ -33,6 +33,8 @@ def build_mlp(
     '''
     #######################################################
     #########   YOUR CODE HERE - 7-20 lines.   ############
+    h = mlp_input
+    out = mlp_input
     with tf.variable_scope(scope):
         n = tf.layers.flatten(mlp_input)
         for _ in range(n_layers):
@@ -41,5 +43,5 @@ def build_mlp(
         out = tf.contrib.layers.fully_connected(n, num_outputs=output_size, activation_fn=output_activation)
 
     return out
-    #######################################################
+        #######################################################
     #########          END YOUR CODE.          ############

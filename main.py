@@ -1,6 +1,7 @@
 import os
 import sys
 from pg.multi_agent_pg import MultiAgentPG
+from maddpg.maddpg import MADDPG
 from pg.config import config
 from make_env import  make_env
 import numpy as np
@@ -18,6 +19,7 @@ if __name__ == '__main__':
   tf.set_random_seed(seed)
   
   # train model
-  model = MultiAgentPG(env)
+  #model = MultiAgentPG(env)
+  model = MADDPG(env)
 
   model.run()
