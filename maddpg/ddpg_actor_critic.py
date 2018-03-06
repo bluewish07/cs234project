@@ -134,7 +134,8 @@ class DDPGActorCritic(object):
     self.q_scope = "q"
     self.target_q_scope = "target_q"
     with tf.variable_scope(self.critic_network_scope):
-      input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(self.actions_n_placeholder)], axis=1)
+      input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(self.actions_n_placeholder)],
+                          axis=1)
       self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
       self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
@@ -149,39 +150,58 @@ class DDPGActorCritic(object):
     #     # self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
     #     #self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
-    def build_policy_network_op(self):
-        """
+  def build_policy_network_op(self):
+    """
         Builds the policy network.
-        """
-        self.mu_scope = "mu"
-        self.target_mu_scope = "target_mu"
-        with tf.variable_scope(self.actor_network_scope):
-            self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
+    """
+    self.mu_scope = "mu"
+    self.target_mu_scope = "target_mu"
+    with tf.variable_scope(self.actor_network_scope):
+      self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
                                 n_layers=self.config.n_layers, size=self.config.layer_size)
-            self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
+      self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
                                        n_layers=self.config.n_layers, size=self.config.layer_size)
 
-    # def add_actor_gradients_op(self):
-    #   """
-    #   http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
-    #   :return: None
-    #   """
-    #   # action_gradient = tf.gradients(self.q_value_placeholder_for_policy_gradient, self.action_logits_placeholder)
-    #   combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
-    #   self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    #   actor_gradients_summed_over_batch = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
-    #   self.actor_gradients = [grad / tf.shape(self.action_logits_placeholder)[0] for grad in actor_gradients_summed_over_batch]
-    #   # list(map(lambda x: tf.div(x, tf.shape(self.action_logits_placeholder)[0]), actor_gradients_summed_over_batch))
+  # def add_actor_gradients_op(self):
+  #   """
+  #     http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
+  #     :return: None
+  #   """
+  #   action_gradient = tf.gradients(self.q, self.action_logits_placeholder)
+  #   combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+  #   self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+  #   actor_gradients_summed_over_batch = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
+  #   self.actor_gradients = [grad / tf.shape(self.action_logits_placeholder)[0] for grad in actor_gradients_summed_over_batch]
+  #   # list(map(lambda x: tf.div(x, tf.shape(self.action_logits_placeholder)[0]), actor_gradients_summed_over_batch))
 
-    def add_optimizer_op(self):
-        """
-        Apply self.actor_gradients
+  def add_actor_loss_op(self):
+    slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
+    slice_2 = tf.slice(self.actions_n_placeholder, [0, self.agent_idx+1, 0], [self.config.batch_size, self.env.n - self.agent_idx - 1, self.action_dim])
+    action_logits = tf.expand_dims(self.mu, axis=1)
+    actions_n = tf.concat([slice_1, action_logits, slice_2], axis=1)
+    input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(actions_n)],
+                      axis=1)
+
+    self.q_copy_scope = "q_copy"
+    with tf.variable_scope(self.actor_network_scope):
+      self.q_copy = build_mlp(input, 1, self.q_copy_scope, self.config.n_layers, self.config.layer_size)
+
+
+  def add_optimizer_op(self):
+    """
+
         :return: None
-        """
-        combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
-        self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-        objective = -1.0 * self.q
-        self.train_actor_op = tf.train.AdamOptimizer(self.lr).minimize(objective, var_list=self.mu_vars)
+    """
+    combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
+    q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
+    with tf.control_dependencies([self.q_copy]):
+      copy_q_ops = self.get_assign_ops(combined_q_scope, q_copy_scope)
+      self.copy_q_op = tf.group(*copy_q_ops)
+
+    combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+    self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+    objective = -1.0 * self.q_copy
+    self.train_actor_op = tf.train.AdamOptimizer(self.lr).minimize(objective, var_list=self.mu_vars)
 
 
     ### update target networks
@@ -190,13 +210,19 @@ class DDPGActorCritic(object):
 
     vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
     target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_scope)
-    vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in vars])
-    target_vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in target_vars])
-    for var_name_suffix, var in vars_by_name_suffix.iteritems():
-      target_var = target_vars_by_name_suffix[var_name_suffix]
+    for idx, var in enumerate(vars):
+      target_var = target_vars[idx]
       new_target_var = self.config.tau * var + (1 - self.config.tau) * target_var
       assign_op = tf.assign(target_var, new_target_var)
       op_list.append(assign_op)
+
+    # vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in vars])
+    # target_vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in target_vars])
+    # for var_name_suffix, var in vars_by_name_suffix.iteritems():
+    #   target_var = target_vars_by_name_suffix[var_name_suffix]
+    #   new_target_var = self.config.tau * var + (1 - self.config.tau) * target_var
+    #   assign_op = tf.assign(target_var, new_target_var)
+    #   op_list.append(assign_op)
 
     return op_list
 
@@ -237,7 +263,8 @@ class DDPGActorCritic(object):
       # create actor net
       # self.add_actor_network_placeholders_op()
       self.build_policy_network_op()
-      # self.add_actor_gradients_op()
+      #self.add_actor_gradients_op()
+      self.add_actor_loss_op()
       self.add_optimizer_op() # depends on self.q
 
       self.add_update_target_op()
@@ -346,8 +373,10 @@ class DDPGActorCritic(object):
     # self.sess.run(self.train_actor_op, feed_dict={self.action_logits_placeholder : action_logits,
     #                                               self.action_gradients_placeholder : action_gradient})
     #                                               #self.q_value_placeholder_for_policy_gradient : q_values})
+    self.sess.run(self.copy_q_op, feed_dict={})
     self.sess.run(self.train_actor_op, feed_cit={self.state_placeholder : state,
-                                                 self.actions_n_placeholder : actions_n})
+                                                 self.actions_n_placeholder : actions_n,
+                                                 self.observation_placeholder : observation})
 
 
 
