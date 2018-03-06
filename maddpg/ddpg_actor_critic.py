@@ -161,6 +161,10 @@ class DDPGActorCritic(object):
                                 n_layers=self.config.n_layers, size=self.config.layer_size)
       self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
                                        n_layers=self.config.n_layers, size=self.config.layer_size)
+    if self.config.random_process_exploration:
+      log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
+      dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu, tf.exp(log_std))
+      self.sample_action_op = dist.sample()
 
   # def add_actor_gradients_op(self):
   #   """
@@ -409,10 +413,8 @@ class DDPGActorCritic(object):
     actions, action_logits = self.get_action_and_logits(batch)
     action = actions[0]
     if self.config.random_process_exploration:
-      with tf.variable_scope("agent_" + str(self.agent_idx)):
-        log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
-        dist = tf.contrib.distributions.MultivariateNormalDiag(action_logits, tf.exp(log_std))
-        action = dist.sample()[0]
+      action = self.sess.run(self.sample_action_op, feed_dict={self.observation_placeholder: batch})[0]
+
     return action
 
 

@@ -33,6 +33,8 @@ class MADDPG(object):
       self.logger = get_logger(config.log_path)
 
     self.env = env
+    self.action_dim = self.env.action_space[0].n
+    self.observation_dim = self.env.observation_space[0].shape[0]
 
     # create n DDPGActorCritic object for n agents
     agent_networks = []
@@ -77,7 +79,7 @@ class MADDPG(object):
         self.env.render()
       idx = replay_buffer.store_frame(obs_n)
       act_n = []  # list of n actions for this step
-      for i in env.n:
+      for i in range(env.n):
           obs = obs_n[i]
           act = self.agent_networks[i].get_sampled_action(obs)
           act_n.append(act)
@@ -96,7 +98,7 @@ class MADDPG(object):
     return replay_buffer.sample(batch_size)
 
   def train(self):
-    replay_buffer = ReplayBuffer(self.config.replay_buffer_size)
+    replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
     self.current_obs_n = self.env.reset()
     self.current_episode_length = 0
     for t in range(self.config.num_batches):

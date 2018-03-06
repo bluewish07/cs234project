@@ -16,7 +16,7 @@ class ReplayBuffer(object):
     """
     Modified on top of Berkeley's Assignment
     """
-    def __init__(self, size):
+    def __init__(self, size, obs_dim, act_dim, num_agents):
         """
         TODO: delete this comment
         We don't need the memory efficiency here as we have no historical frames of images to look at
@@ -48,10 +48,10 @@ class ReplayBuffer(object):
         self.next_idx      = 0
         self.num_in_buffer = 0
 
-        self.obs      = None
-        self.action   = None
-        self.reward   = None
-        self.done     = None
+        self.obs = np.empty([self.size, num_agents, obs_dim], dtype=np.float32)
+        self.action = np.empty([self.size, num_agents, act_dim], dtype=np.float32)
+        self.reward = np.empty([self.size, num_agents], dtype=np.float32)
+        self.done = np.empty([self.size], dtype=np.bool)
 
     def can_sample(self, batch_size):
         """Returns true if `batch_size` different transitions can be sampled from the buffer."""
@@ -62,7 +62,7 @@ class ReplayBuffer(object):
         act_batch      = self.action[idxes]
         rew_batch      = self.reward[idxes]
         next_obs_batch = self.obs[[idx+1 for idx in idxes]]
-        done_mask      = np.array([1.0 if self.done[idx][0] else 0.0 for idx in idxes], dtype=np.float32)
+        done_mask      = np.array([1.0 if self.done[idx] else 0.0 for idx in idxes], dtype=np.float32)
 
         return obs_batch, act_batch, rew_batch, next_obs_batch, done_mask
 
@@ -158,11 +158,7 @@ class ReplayBuffer(object):
         idx: int
             Index at which the frame is stored. To be used for `store_effect` later.
         """
-        if self.obs is None:
-            self.obs      = np.empty([self.size] + list(frame.shape), dtype=np.uint8)
-            self.action   = np.empty([self.size],                     dtype=np.int32)
-            self.reward   = np.empty([self.size],                     dtype=np.float32)
-            self.done     = np.empty([self.size],                     dtype=np.bool)
+
         self.obs[self.next_idx] = frame
 
         ret = self.next_idx
@@ -190,5 +186,5 @@ class ReplayBuffer(object):
         """
         self.action[idx] = action
         self.reward[idx] = reward
-        self.done[idx]   = done
+        self.done[idx]   = done[0]
 
