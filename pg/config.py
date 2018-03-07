@@ -18,17 +18,17 @@ class config():
 
     
     # model and training config
-    num_batches = 200 # number of batches trained on 
+    num_batches = 1200 # number of batches trained on
     batch_size = 1024 # number of steps used to compute each policy update
     batch_size_in_episodes = 50 # number of episodes used to compute each policy update
-    max_ep_len = 1000 # maximum episode length
-    learning_rate = 1e-3
-    gamma              = 1.0 # the discount factor
+    max_ep_len = 25 # maximum episode length
+    learning_rate = 1e-2
+    gamma              = .95 # the discount factor
     use_baseline = True 
     normalize_advantage=True 
     # parameters for the policy and baseline models
-    n_layers = 1
-    layer_size = 16
+    n_layers = 2
+    layer_size = 64
     activation=tf.nn.relu 
 
 
