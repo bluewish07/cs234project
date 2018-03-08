@@ -7,6 +7,7 @@ import tensorflow as tf
 from config import config
 from utils.general import get_logger, export_plot
 from utils.network import build_mlp
+from utils.ornstein_uhlenbeck import OrnsteinUhlenbeckActionNoise
 
 
 class DDPGActorCritic(object):
@@ -54,9 +55,15 @@ class DDPGActorCritic(object):
       self.policy_approx_networks_scope = "policy_approx_networks"
       self.actor_network_scope = "actor_network"
       self.critic_network_scope = "critic_network"
-
-
-
+      
+      # Noise to simulate the random process
+      # TODO: consider making this an input parameter so we can tweak it?
+      self.noise = OrnsteinUhlenbeckActionNoise(
+            mu=np.zeros(env.action_space[0].n),
+            sigma=0.3,
+            theta=0.15,
+            dt=1e-2,
+            x0=None)
 
 
   ############### Building the model graph ####################
@@ -258,8 +265,8 @@ class DDPGActorCritic(object):
       # add shared placeholders
       self.add_placeholders_op()
       # create actor approx nets
-      self.build_policy_approx_networks()
-      self.add_update_policy_approx_networks_op()
+      # self.build_policy_approx_networks()
+      # self.add_update_policy_approx_networks_op()
       # create critic net
       self.add_critic_network_placeholders_op()
       self.add_critic_network_op()
@@ -415,7 +422,8 @@ class DDPGActorCritic(object):
     if self.config.random_process_exploration:
       action = self.sess.run(self.sample_action_op, feed_dict={self.observation_placeholder: batch})[0]
 
-    return action
+    # take the action from the network, which represents the mean, and add a random process to it
+    return action + self.noise() 
 
 
   def train_for_batch_samples(self, samples):
@@ -436,7 +444,7 @@ class DDPGActorCritic(object):
     next_observations_by_agent = np.swapaxes(next_state, 0, 1)
     observation_for_current_agent = observations_by_agent[self.agent_idx]
     reward_for_current_agent = rewards_by_agent[self.agent_idx]
-    self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
+    # self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
     # update centralized Q network
     self.update_critic_network(state, observations_by_agent, next_state, next_observations_by_agent, reward_for_current_agent, done_mask)

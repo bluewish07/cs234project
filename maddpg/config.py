@@ -5,7 +5,7 @@ class config():
     env_name = "simple_spread"
     algo_name = "MADDPG"
     record           = False
-    render = True
+    render = False # True
 
     # output config
     output_path  = "results/" + env_name + "/" + algo_name + "/"
@@ -28,7 +28,7 @@ class config():
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
     tau = 0.01
-    random_process_exploration = True
+    random_process_exploration = False #True
     use_baseline = True 
     normalize_advantage=True
     replay_buffer_size = 1000000
