@@ -121,8 +121,8 @@ class MADDPG(object):
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
       self.current_obs_n = obs_n
-      episode_reward += rew_n
-
+      temp = np.mean(np.clip(rew_n, -1e10, 1e10)) # for better numerical stability
+      episode_reward += temp # NV NOTE: averages reward across agents to give episode reward
       self.current_episode_length += 1
       if (done_n[0] or self.current_episode_length >= self.config.max_ep_len):
         # end the existing episode
@@ -141,9 +141,7 @@ class MADDPG(object):
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
     msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
     self.logger.info(msg)
-      
-    return replay_buffer.sample(batch_size)  
-
+    
   def train(self):
     replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
     self.current_obs_n = self.env.reset()
@@ -159,8 +157,7 @@ class MADDPG(object):
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
       if True:
-        self.logger.info("Beginning evaluation run.")
-        test_run(self, env, self.config.train_freq, self.config.batch_size)
+        self.test_run(self.env, self.config.batch_size_in_episodes)
         
 
     self.logger.info("- Training all done.")
