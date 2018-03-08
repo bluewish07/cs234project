@@ -72,11 +72,14 @@ class MADDPG(object):
 
     """
     t = 0
-
+    paths = []
+    current_path = []
     obs_n = self.current_obs_n
     while (t < sample_freq or (not replay_buffer.can_sample(batch_size))):
-      if self.config.render:
-        self.env.render()
+      current_path = []
+      # NV: Don't render during path sampling, only render during test runs
+      # if self.config.render:
+        # self.env.render()
       idx = replay_buffer.store_frame(obs_n)
       act_n = []  # list of n actions for this step
       for i in range(env.n):
@@ -94,8 +97,52 @@ class MADDPG(object):
         # reset
         self.current_obs_n = self.env.reset()
         self.current_episode_length = 0
-
+    
     return replay_buffer.sample(batch_size)
+
+  def test_run(self, env, num_episodes):
+    """
+      Do a test run to evaluate the network, and log statistics 
+      Does NOT populate the experience replay buffer, as this is for evaluation purposes
+    """
+    j = 0
+    total_rewards = []
+    episode_reward = 0
+    obs_n = self.current_obs_n
+    
+    while j < num_episodes:
+      if self.config.render:
+        self.env.render()
+      act_n = []  # list of n actions for this step
+      for i in range(env.n):
+          obs = obs_n[i]
+          act = self.agent_networks[i].get_sampled_action(obs)
+          act_n.append(act)
+
+      obs_n, rew_n, done_n, info_n = env.step(act_n)
+      self.current_obs_n = obs_n
+      episode_reward += rew_n
+
+      self.current_episode_length += 1
+      if (done_n[0] or self.current_episode_length >= self.config.max_ep_len):
+        # end the existing episode
+        total_rewards.append(episode_reward)
+        j += 1
+        
+        # reset
+        self.current_obs_n = self.env.reset()
+        self.current_episode_length = 0
+        
+        # start a new episode
+        episode_reward = 0
+        
+    # log average episode reward
+    avg_reward = np.mean(total_rewards)
+    sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
+    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    self.logger.info(msg)
+      
+    return replay_buffer.sample(batch_size)  
 
   def train(self):
     replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
@@ -104,13 +151,20 @@ class MADDPG(object):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
       samples = self.sample_n(self.env, replay_buffer, self.config.train_freq, self.config.batch_size)
-      for i in self.env.n:
+      for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agent_networks[i]
         agent_net.train_for_batch_samples(samples)
+      
+      # NV: every batch, do a test_run and print average reward)
+      # change this if we want to sample more often
+      if True:
+        self.logger.info("Beginning evaluation run.")
+        test_run(self, env, self.config.train_freq, self.config.batch_size)
+        
 
     self.logger.info("- Training all done.")
-
+    
 
   def run(self):
     """

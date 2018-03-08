@@ -265,8 +265,8 @@ class DDPGActorCritic(object):
       # add shared placeholders
       self.add_placeholders_op()
       # create actor approx nets
-      # self.build_policy_approx_networks()
-      # self.add_update_policy_approx_networks_op()
+      self.build_policy_approx_networks()
+      self.add_update_policy_approx_networks_op()
       # create critic net
       self.add_critic_network_placeholders_op()
       self.add_critic_network_op()
@@ -306,7 +306,7 @@ class DDPGActorCritic(object):
     :param actions_by_agent: shape (num_agent, batch_size, action_dim)
     :return:
     """
-    for i in self.env.n:
+    for i in range(self.env.n):
       if i == self.agent_idx: continue
       obs = observations_by_agent[i]
       act = actions_by_agent[i]
@@ -338,6 +338,9 @@ class DDPGActorCritic(object):
                                       feed_dict={self.observation_placeholder: next_observations_i})
             est_next_actions_by_agent.append(next_actions_i)
     est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
+    
+    # NV TODAY TODO: look in the replay buffer for the next state, get the actual actions taken, and do them
+    # NV TODO: 
 
     q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
                                                      self.actions_n_placeholder : est_next_actions})
@@ -423,7 +426,7 @@ class DDPGActorCritic(object):
       action = self.sess.run(self.sample_action_op, feed_dict={self.observation_placeholder: batch})[0]
 
     # take the action from the network, which represents the mean, and add a random process to it
-    return action + self.noise() 
+    return action
 
 
   def train_for_batch_samples(self, samples):
@@ -433,7 +436,6 @@ class DDPGActorCritic(object):
             Args:
               samples: a tuple (obs_batch, act_batch, rew_batch, next_obs_batch, done_mask)
                     obs_batch: np.array of shape (None, num_agent, observation_dim)
-
     """
 
     state, true_actions, rewards, next_state, done_mask = samples
@@ -444,7 +446,7 @@ class DDPGActorCritic(object):
     next_observations_by_agent = np.swapaxes(next_state, 0, 1)
     observation_for_current_agent = observations_by_agent[self.agent_idx]
     reward_for_current_agent = rewards_by_agent[self.agent_idx]
-    # self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
+    self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
     # update centralized Q network
     self.update_critic_network(state, observations_by_agent, next_state, next_observations_by_agent, reward_for_current_agent, done_mask)
