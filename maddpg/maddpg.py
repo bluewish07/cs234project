@@ -10,6 +10,7 @@ import time
 import inspect
 from utils.general import get_logger, Progbar, export_plot
 from utils.replay_buffer import ReplayBuffer
+from  utils.collisions import count_agent_collisions
 from config import config
 
 from ddpg_actor_critic import DDPGActorCritic
@@ -108,11 +109,15 @@ class MADDPG(object):
     j = 0
     total_rewards = []
     episode_reward = 0
+    collisions = []
+    episode_collisions = 0
     obs_n = self.current_obs_n
     
     while j < num_episodes:
       if self.config.render:
+        time.sleep(0.1)
         self.env.render()
+        continue
       act_n = []  # list of n actions for this step
       for i in range(env.n):
           obs = obs_n[i]
@@ -123,18 +128,23 @@ class MADDPG(object):
       self.current_obs_n = obs_n
       temp = np.mean(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
       episode_reward += temp # NV NOTE: averages reward across agents to give episode reward
+      
+      episode_collisions += count_agent_collisions(self.env)
+      
       self.current_episode_length += 1
       if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # end the existing episode
         total_rewards.append(episode_reward)
+        collisions.append(episode_collisions)
         j += 1
         
         # reset
         self.current_obs_n = self.env.reset()
         self.current_episode_length = 0
         
-        # start a new episode
         episode_reward = 0
+        episode_collisions = 0
+        
         
     # log average episode reward
     avg_reward = np.mean(total_rewards)
@@ -142,6 +152,12 @@ class MADDPG(object):
     msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
     self.logger.info(msg)
     
+    # log # of collisions
+    avg_collisions = np.mean(collisions)
+    sigma_collisions = np.sqrt(np.var(collisions) / len(collisions))
+    msg = "Average collisions: {:04.2f} +/- {:04.2f}".format(avg_collisions, sigma_collisions)
+    self.logger.info(msg)
+        
   def train(self):
     replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
     self.current_obs_n = self.env.reset()
