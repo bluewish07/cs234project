@@ -203,3 +203,44 @@ class MADDPG(object):
     # model
     self.train()
 
+  ############### summary and logging ###############
+
+  def record_summary(self, t):
+      """
+          Add summary to tfboard
+
+          You don't have to change or use anything here.
+          """
+
+      fd = {
+        self.avg_reward_placeholder: self.avg_reward,
+        self.max_reward_placeholder: self.max_reward,
+        self.std_reward_placeholder: self.std_reward,
+        self.eval_reward_placeholder: self.eval_reward,
+      }
+      summary = self.sess.run(self.merged, feed_dict=fd)
+      # tensorboard stuff
+      self.file_writer.add_summary(summary, t)
+
+  def add_summary(self):
+      """
+          Tensorboard stuff.
+
+          You don't have to change or use anything here.
+          """
+      # extra placeholders to log stuff from python
+      self.avg_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_reward")
+      self.max_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="max_reward")
+      self.std_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="std_reward")
+
+      self.eval_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="eval_reward")
+
+      # extra summaries from python -> placeholders
+      tf.summary.scalar("Avg Reward", self.avg_reward_placeholder)
+      tf.summary.scalar("Max Reward", self.max_reward_placeholder)
+      tf.summary.scalar("Std Reward", self.std_reward_placeholder)
+      tf.summary.scalar("Eval Reward", self.eval_reward_placeholder)
+
+      # logging
+      self.merged = tf.summary.merge_all()
+      self.file_writer = tf.summary.FileWriter(self.config.output_path, self.sess.graph)

@@ -107,7 +107,6 @@ class DDPGActorCritic(object):
         See section 4.2 Inferring Policies of Other Agents for loss function and other info
         :return: None
         """
-
         update_ops = []
         for i in range(self.env.n):
             if i == self.agent_idx:
@@ -203,24 +202,25 @@ class DDPGActorCritic(object):
 
             :return: None
         """
-    	combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
-    	q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
-    	with tf.control_dependencies([self.q_copy]):
-      	    copy_q_ops = self.get_assign_ops(combined_q_scope, q_copy_scope)
-            self.copy_q_op = tf.group(*copy_q_ops)
+        combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
+        q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
 
-	optimizer = tf.train.AdamOptimizer(self.lr)
-    	combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
-    	self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    	objective = -1.0 * self.q_copy
-    	if self.config.grad_clip is False:
+        copy_q_ops = self.get_assign_ops(combined_q_scope, q_copy_scope)
+        self.copy_q_op = tf.group(*copy_q_ops)
+
+        optimizer = tf.train.AdamOptimizer(self.lr)
+        combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
+        self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+        objective = -1.0 * self.q_copy
+        self.train_actor_op = None
+        if self.config.grad_clip is False:
             self.train_actor_op = optimizer.minimize(objective, var_list=self.mu_vars)
-    	else:
+        else:
             grads = optimizer.compute_gradients(objective, self.mu_vars)
             variables = [v for g,v in grads]
             clipped = [tf.clip_by_norm(g, self.config.clip_val) for g,v in grads]
             grads = zip(clipped, variables)
-            self.train_op = optimizer.apply_gradients(grads, name='clippedgrads')
+            self.train_actor_op = optimizer.apply_gradients(grads, name='clippedgrads')
 
 
         ### update target networks
