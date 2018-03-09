@@ -20,7 +20,7 @@ class config():
     # model and training config
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
     num_batches = 60 # number of batches trained on
-    batch_size_in_episodes = 100 #1024 # number of samples used to compute each policy update
+    batch_size_in_episodes = 1024 # number of samples used to compute each policy update
     max_ep_len = 25 # maximum episode length
     batch_size = batch_size_in_episodes * max_ep_len
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer

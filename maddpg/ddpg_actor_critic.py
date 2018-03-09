@@ -422,8 +422,8 @@ class DDPGActorCritic(object):
         actions, action_logits = self.get_action_and_logits(batch)
         action = actions[0]
         if self.config.random_process_exploration:
-            action = self.sess.run(self.sample_action_op, feed_dict={self.observation_placeholder: batch})[0]
-
+            # action = self.sess.run(self.sample_action_op, feed_dict={self.observation_placeholder: batch})[0]
+            action = np.clip(action + self.noise(), -2, 2)
         # take the action from the network, which represents the mean, and add a random process to it
         return action
 

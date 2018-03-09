@@ -121,10 +121,10 @@ class MADDPG(object):
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
       self.current_obs_n = obs_n
-      temp = np.mean(np.clip(rew_n, -1e10, 1e10)) # for better numerical stability
+      temp = np.mean(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
       episode_reward += temp # NV NOTE: averages reward across agents to give episode reward
       self.current_episode_length += 1
-      if (done_n[0] or self.current_episode_length >= self.config.max_ep_len):
+      if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # end the existing episode
         total_rewards.append(episode_reward)
         j += 1
