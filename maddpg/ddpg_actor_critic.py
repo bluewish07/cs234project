@@ -107,6 +107,8 @@ class DDPGActorCritic(object):
         See section 4.2 Inferring Policies of Other Agents for loss function and other info
         :return: None
         """
+        self.policy_approx_networks_loss = 0
+
         update_ops = []
         for i in range(self.env.n):
             if i == self.agent_idx:
@@ -118,10 +120,17 @@ class DDPGActorCritic(object):
             logprob = dist.log_prob(self.action_placeholder)
             entropy = dist.entropy()
             loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * entropy)
+            self.policy_approx_networks_loss += loss
+            optimizer = tf.train.AdamOptimizer(self.lr)
+            combined_scope = self.agent_scope + "/" + self.policy_approx_networks_scope + "/" + "agent_" + str(i)
+            vars_in_scope = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+            grads = optimizer.compute_gradients(loss, var_list=vars_in_scope)
+
             update = tf.train.AdamOptimizer(self.lr).minimize(loss)
             update_ops.append(update)
 
         self.update_policy_approx_networks_op = update_ops
+        self.policy_approx_networks_loss /= (self.env.n - 1)
 
 
     ### critic network
@@ -146,8 +155,11 @@ class DDPGActorCritic(object):
             self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
     def add_update_critic_network_op(self):
-        y = self.reward_placeholder + self.config.gamma * self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask_placeholder), dtype=tf.float32)
-        loss = tf.losses.mean_squared_error(y, self.q)
+        future_q = self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask_placeholder), dtype=tf.float32)
+        #future_q = tf.Print(future_q, [tf.shape(future_q)], message="future q")
+        y = self.reward_placeholder + self.config.gamma * future_q
+        #y = tf.Print(y, [y, tf.shape(y)], message="y")
+        loss = tf.losses.mean_squared_error(y, tf.squeeze(self.q, axis=1))
         self.update_critic_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
 
         ### actor network
@@ -211,7 +223,7 @@ class DDPGActorCritic(object):
         optimizer = tf.train.AdamOptimizer(self.lr)
         combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
         self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-        objective = -1.0 * self.q_copy
+        objective = -1.0 * tf.reduce_mean(self.q_copy)
         self.train_actor_op = None
         if self.config.grad_clip is False:
             self.train_actor_op = optimizer.minimize(objective, var_list=self.mu_vars)
@@ -352,6 +364,7 @@ class DDPGActorCritic(object):
 
         q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
                                                          self.actions_n_placeholder : est_next_actions})
+        q_next = np.squeeze(q_next, axis=1)
 
         # Then get an estimated action from each agent approx network given current observation
         # Specifically, for the current agent, get the action from the policy network
