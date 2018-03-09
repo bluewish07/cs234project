@@ -29,6 +29,8 @@ class config():
     policy_approx_lambda = .001
     tau = 0.01
     random_process_exploration = True
+    grad_clip = True
+    clip_val = 0.5
     use_baseline = True 
     normalize_advantage=True
     replay_buffer_size = 1000000
