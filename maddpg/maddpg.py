@@ -127,8 +127,8 @@ class MADDPG(object):
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
       self.current_obs_n = obs_n
-      temp = np.mean(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
-      episode_reward += temp # NV NOTE: averages reward across agents to give episode reward
+      temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
+      episode_reward += temp # sum reward across agents to give episode reward
       
       episode_collisions += count_agent_collisions(self.env)
       
@@ -138,6 +138,7 @@ class MADDPG(object):
       if np.mean(rew_n) > -0.1:
         successes += 1
       
+
       self.current_episode_length += 1
       if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # end the existing episode
@@ -156,7 +157,7 @@ class MADDPG(object):
     # log average episode reward
     avg_reward = np.mean(total_rewards)
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
-    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
     self.logger.info(msg)
     
     # log # of collisions
@@ -201,3 +202,4 @@ class MADDPG(object):
 
     # model
     self.train()
+

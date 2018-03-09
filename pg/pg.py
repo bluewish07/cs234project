@@ -32,7 +32,8 @@ class PG(object):
   """
   Abstract Class for implementing a Policy Gradient Based Algorithm
   """
-  def __init__(self, env, configuration, logger=None):
+  def __init__(self, agent_idx, env, configuration, logger=None):
+    self.agent_idx = agent_idx
     self.config = configuration
 
     # directory for training outputs
@@ -217,7 +218,7 @@ class PG(object):
 
     avg_reward = np.mean(total_rewards)
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
-    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    msg = "Agent {} average reward: {:04.2f} +/- {:04.2f}".format(self.agent_idx, avg_reward, sigma_reward)
     self.logger.info(msg)
 
 ##################### For running/training a single PG model only #######################

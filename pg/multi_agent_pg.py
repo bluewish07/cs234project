@@ -34,7 +34,7 @@ class MultiAgentPG(object):
     # create n PG objects for n agents
     temp = []
     for i in range(self.env.n):
-      temp.append(PG(self.env, configuration=self.config, logger=logger))
+      temp.append(PG(i, self.env, configuration=self.config, logger=logger))
     self.agents = temp
     
   def build(self):
@@ -120,6 +120,20 @@ class MultiAgentPG(object):
 
     return paths_n
 
+  def evaluate(self, num_episodes = 1):
+    paths_n = self.sample_paths_n(num_episodes)
+    rewards = [0] * num_episodes
+    for i in range(self.env.n):
+      paths_for_agent = paths_n[i]
+      for eps_idx, path in enumerate(paths_for_agent):
+        rewards[eps_idx] += np.sum(path["reward"])
+
+    avg_reward = np.mean(rewards)
+    sigma_reward = np.sqrt(np.var(rewards) / len(rewards))
+    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    self.logger.info(msg)
+    return avg_reward
+
   def train(self):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
@@ -128,6 +142,8 @@ class MultiAgentPG(object):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agents[i]
         agent_net.train_for_batch_paths(paths_n[i])
+
+      self.evaluate(self.config.batch_size_in_episodes)
 
     self.logger.info("- Training all done.")
 
