@@ -462,11 +462,11 @@ class DDPGActorCritic(object):
             logits_batched, action_batched = self.sess.run([self.mu, self.sample_action_op], feed_dict={self.observation_placeholder: batch})
             logits = logits_batched[0]
             action = action_batched[0]
-        elif self.config.random_process_exploration == 1 and not is_evaluation: # ornstein-uhlenbeck
-            action = action + self.noise()
         else:
             actions, action_logits = self.get_action_and_logits(batch)
             action = actions[0]
+            if self.config.random_process_exploration == 1 and not is_evaluation: # ornstein-uhlenbeck
+                action = action + self.noise()    
             if is_evaluation:
                 return action
             logits = action_logits[0]
