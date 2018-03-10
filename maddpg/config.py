@@ -28,9 +28,10 @@ class config():
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
     tau = 0.01
-    random_process_exploration = True
+    random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
+    sampling_std = .5
     grad_clip = True
-    clip_val = 0.5
+    clip_val = .5
     use_baseline = True 
     normalize_advantage=True
     replay_buffer_size = 1000000
