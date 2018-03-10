@@ -19,17 +19,18 @@ class config():
     
     # model and training config
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
-    num_batches = 60 # number of batches trained on
-    batch_size_in_episodes = 1024 # number of samples used to compute each policy update
+    num_batches = 600 # number of batches trained on
+    batch_size_in_episodes = 40 # number of samples used to compute each policy update
     max_ep_len = 25 # maximum episode length
     batch_size = batch_size_in_episodes * max_ep_len
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
+    eval_freq = 25 # every eval_freq batches, evaluate
     learning_rate = 0.01
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
     tau = 0.01
     random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
-    sampling_std = .5
+    sampling_std = .1
     grad_clip = True
     clip_val = .5
     use_baseline = True 

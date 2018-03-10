@@ -94,7 +94,7 @@ class DDPGActorCritic(object):
                     continue
                 scope = "agent_" + str(i)
                 approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
-                                   self.config.layer_size, output_activation=tf.nn.tanh)
+                                   self.config.layer_size, output_activation=tf.nn.softmax)
                 policy_approximates.append(approx)
                 with tf.variable_scope(scope):
                     log_std = tf.get_variable("log_std", shape=[self.action_dim], dtype=tf.float32)
@@ -109,7 +109,8 @@ class DDPGActorCritic(object):
         See section 4.2 Inferring Policies of Other Agents for loss function and other info
         :return: None
         """
-        self.policy_approx_networks_loss = 0
+        self.policy_approx_networks_losses = [None] * self.env.n
+        self.policy_approx_grad_norms = [None] * self.env.n
 
         update_ops = []
         for i in range(self.env.n):
@@ -118,15 +119,18 @@ class DDPGActorCritic(object):
                 continue
             log_std = self.policy_approx_log_stds[i]
             #TODO later: we can try other distributions as well?
-            dist = tf.contrib.distributions.MultivariateNormalDiag(self.policy_approximates[i], tf.exp(log_std))
-            logprob = dist.log_prob(self.action_placeholder)
+            policy_approx = self.policy_approximates[i]
+            dist = tf.contrib.distributions.Categorical(probs=policy_approx)
+            logprob = -tf.nn.softmax_cross_entropy_with_logits(labels=self.action_placeholder, logits=policy_approx)
             entropy = dist.entropy()
             loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * entropy)
-            self.policy_approx_networks_loss += loss
+            self.policy_approx_networks_losses[i] = tf.Print(loss, [loss], message="agent_"+str(i)+" loss:")
             optimizer = tf.train.AdamOptimizer(self.lr)
             combined_scope = self.agent_scope + "/" + self.policy_approx_networks_scope + "/" + "agent_" + str(i)
             vars_in_scope = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
             grads_vars = optimizer.compute_gradients(loss, var_list=vars_in_scope)
+            grad_norm = tf.global_norm([grad for (grad, _) in grads_vars])
+            self.policy_approx_grad_norms[i] = tf.Print(grad_norm, [grad_norm], message="agent_"+str(i)+" grad norm:")
             update = optimizer.apply_gradients(grads_vars)
 
             # update = tf.train.AdamOptimizer(self.lr).minimize(loss)
@@ -154,17 +158,27 @@ class DDPGActorCritic(object):
             input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(self.actions_n_placeholder)],
                               axis=1)
             self.q = build_mlp(input, 1, self.q_scope, self.config.n_layers, self.config.layer_size)
-            # self.q = tf.Print(self.q, [self.q], message="q", summarize=20)
+            self.q = tf.Print(self.q, [self.q], message="q", summarize=20)
             self.target_q = build_mlp(input, 1, self.target_q_scope, self.config.n_layers, self.config.layer_size)
 
     def add_update_critic_network_op(self):
         future_q = self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask_placeholder), dtype=tf.float32)
         #future_q = tf.Print(future_q, [tf.shape(future_q)], message="future q")
         y = self.reward_placeholder + self.config.gamma * future_q
-        #y = tf.Print(y, [y, tf.shape(y)], message="y")
+        y = tf.Print(y, [y, tf.shape(y)], message="y")
         loss = tf.losses.mean_squared_error(y, tf.squeeze(self.q, axis=1))
-        self.critic_network_loss = loss
-        self.update_critic_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
+        self.critic_network_loss = tf.Print(loss, [loss], message="critic network loss: ")
+        optimizer = tf.train.AdamOptimizer(self.lr)
+        combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_scope
+        q_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
+        grads_vars = optimizer.compute_gradients(loss, var_list=combined_scope)
+        grad_norm = tf.global_norm([grad for (grad, _) in grads_vars])
+        self.critic_network_grad_norm = tf.Print(grad_norm, [grad_norm], message="critic network grad_norm: ")
+        if self.config.grad_clip:
+            variables = [v for g,v in grads_vars]
+            clipped = [tf.clip_by_norm(g, self.config.clip_val) for g,v in grads_vars]
+            grads_vars = zip(clipped, variables)
+        self.update_critic_op = optimizer.apply_gradients(grads_vars)
 
         ### actor network
         # def add_actor_network_placeholders_op(self):
@@ -180,7 +194,7 @@ class DDPGActorCritic(object):
         self.target_mu_scope = "target_mu"
         with tf.variable_scope(self.actor_network_scope):
             self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
-                                n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.tanh)
+                                n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.softmax)
             # self.mu = tf.Print(self.mu, [self.mu], message="mu", summarize=20)
             self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
                                        n_layers=self.config.n_layers, size=self.config.layer_size)
@@ -346,7 +360,9 @@ class DDPGActorCritic(object):
             obs = observations_by_agent[i]
             act = actions_by_agent[i]
             update_approx_network = self.update_policy_approx_networks_op[i]
-            self.sess.run(update_approx_network, feed_dict={self.action_placeholder : act,
+            loss = self.policy_approx_networks_losses[i]
+            grad_norm = self.policy_approx_grad_norms[i]
+            self.sess.run([update_approx_network, loss, grad_norm], feed_dict={self.action_placeholder : act,
                                                             self.observation_placeholder : obs})
 
     def update_critic_network(self, state, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask):
@@ -394,7 +410,7 @@ class DDPGActorCritic(object):
             est_actions_by_agent.append(actions_i)
         est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
 
-        self.sess.run(self.update_critic_op, feed_dict={self.state_placeholder : state,
+        self.sess.run([self.critic_network_loss, self.update_critic_op], feed_dict={self.state_placeholder : state,
                                                         self.actions_n_placeholder: est_actions,
                                                         self.q_next_placeholder : q_next,
                                                         self.reward_placeholder : rewards,

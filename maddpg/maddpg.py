@@ -76,7 +76,7 @@ class MADDPG(object):
     paths = []
     current_path = []
     obs_n = self.current_obs_n
-    while (t < sample_freq or (not replay_buffer.can_sample(batch_size))):
+    while (t < sample_freq or (not replay_buffer.can_sample(self.config.replay_buffer_size))):
       current_path = []
       # NV: Don't render during path sampling, only render during test runs
       # if self.config.render:
@@ -94,8 +94,10 @@ class MADDPG(object):
 
       t += 1
       self.current_episode_length += 1
-      if (done_n[0] or self.current_episode_length >= self.config.max_ep_len):
+      if (all(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # reset
+        # print(act_n)
+        # print(rew_n)
         self.current_obs_n = self.env.reset()
         self.current_episode_length = 0
     
@@ -112,7 +114,8 @@ class MADDPG(object):
     collisions = []
     episode_collisions = 0
     successes = 0
-    obs_n = self.current_obs_n
+    obs_n = self.env.reset()
+    episode_length = 0
     
     while j < num_episodes:
       if self.config.render:
@@ -126,7 +129,9 @@ class MADDPG(object):
           act_n.append(act)
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
-      self.current_obs_n = obs_n
+      episode_length += 1
+      #print(act_n)
+      #print(rew_n)
       temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
       episode_reward += temp # sum reward across agents to give episode reward
       
@@ -139,16 +144,16 @@ class MADDPG(object):
         successes += 1
       
 
-      self.current_episode_length += 1
-      if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
+      if (all(done_n) or episode_length >= self.config.max_ep_len):
+        # print(act_n)
+        # print(rew_n)
         # end the existing episode
         total_rewards.append(episode_reward)
         collisions.append(episode_collisions)
+
+        episode_length = 0
+        obs_n = self.env.reset()
         j += 1
-        
-        # reset
-        self.current_obs_n = self.env.reset()
-        self.current_episode_length = 0
         
         episode_reward = 0
         episode_collisions = 0
@@ -184,7 +189,7 @@ class MADDPG(object):
       
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
-      if True:
+      if t % self.config.eval_freq:
         self.test_run(self.env, self.config.batch_size_in_episodes)
         
 
