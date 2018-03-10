@@ -144,8 +144,7 @@ class MADDPG(object):
       if np.mean(rew_n) > -0.1:
         successes += 1
       
-      dist = get_distance_from_landmarks(self.env)
-      avg_distance_episode += np.mean(dist)
+      avg_distance_episode += get_distance_from_landmarks(self.env)
 
       self.current_episode_length += 1
       if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
@@ -161,7 +160,7 @@ class MADDPG(object):
         
         episode_reward = 0
         episode_collisions = 0
-        avg_distance_per_episode = 0
+        avg_distance_episode = 0
         
         
     # log average episode reward
