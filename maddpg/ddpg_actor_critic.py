@@ -348,7 +348,7 @@ class DDPGActorCritic(object):
             self.sess.run(update_approx_network, feed_dict={self.action_placeholder : act,
                                                             self.observation_placeholder : obs})
 
-    def update_critic_network(self, state, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask):
+    def update_critic_network(self, state, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask, agents_list=None):
         """
         Update the critic network
         Args:
@@ -366,14 +366,17 @@ class DDPGActorCritic(object):
             if i == self.agent_idx:
                 next_actions_i = self.sess.run(self.target_mu, feed_dict={self.observation_placeholder: next_observations_i})
             else:
-                next_actions_i = self.sess.run(self.policy_approximates[i],
+                if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
+                  next_actions_i = self.sess.run(self.policy_approximates[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
+                else:
+                  # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
+                  other = agents_list[i]
+                  next_actions_i = other.sess.run(other.target_mu, feed_dict={other.observation_placeholder: next_observations_i}) 
+                  
             est_next_actions_by_agent.append(next_actions_i)
         est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
-
-        # NV TODAY TODO: look in the replay buffer for the next state, get the actual actions taken, and do them
-        # NV TODO:
-
+            
         q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
                                                          self.actions_n_placeholder : est_next_actions})
         q_next = np.squeeze(q_next, axis=1)
@@ -442,8 +445,8 @@ class DDPGActorCritic(object):
             action_indices = tf.argmax(action_logits, axis=1)
             # action_indices = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
             actions = tf.one_hot(action_indices, self.action_dim)
-        return actions, action_logits
-
+        return actions, action_logits     
+    
     def get_sampled_action(self, observation, is_evaluation=False):
         """
         Get a single action for a single observation, used for stepping the environment
@@ -459,14 +462,14 @@ class DDPGActorCritic(object):
             logits_batched, action_batched = self.sess.run([self.mu, self.sample_action_op], feed_dict={self.observation_placeholder: batch})
             logits = logits_batched[0]
             action = action_batched[0]
+        elif self.config.random_process_exploration == 1 and not is_evaluation: # ornstein-uhlenbeck
+            action = action + self.noise()
         else:
             actions, action_logits = self.get_action_and_logits(batch)
             action = actions[0]
             if is_evaluation:
                 return action
             logits = action_logits[0]
-            if self.config.random_process_exploration == 1: # ornstein uhlenbeck
-                action = np.clip(action + self.noise(), -2, 2)
 
         # self.logger.info("action logits: ")
         # self.logger.info(logits)
@@ -475,7 +478,7 @@ class DDPGActorCritic(object):
         return action
 
 
-    def train_for_batch_samples(self, samples):
+    def train_for_batch_samples(self, samples, agents_list=None):
         """
             Train for a batch of samples
 
@@ -495,7 +498,7 @@ class DDPGActorCritic(object):
         self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
         # update centralized Q network
-        self.update_critic_network(state, observations_by_agent, next_state, next_observations_by_agent, reward_for_current_agent, done_mask)
+        self.update_critic_network(state, observations_by_agent, next_state, next_observations_by_agent, reward_for_current_agent, done_mask, agents_list)
 
         # update actor network
         self.update_actor_network(observation_for_current_agent, true_actions, state)

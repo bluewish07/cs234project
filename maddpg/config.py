@@ -28,10 +28,6 @@ class config():
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
     tau = 0.01
-    random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
-    sampling_std = .5
-    grad_clip = True
-    clip_val = .5
     use_baseline = True 
     normalize_advantage=True
     replay_buffer_size = 1000000
@@ -39,6 +35,15 @@ class config():
     n_layers = 2
     layer_size = 128
     activation=tf.nn.relu 
+    
+    # added configs
+    use_true_actions = True
+    random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
+    sampling_std = .5 
+    grad_clip = True # if true, clip the gradient using clip_val
+    clip_val = .5
+    
+    action_clip = True #if true, clip actions taken to be between -2 and 2 (used in maddpg.sample_n)
 
 
     # since we start new episodes for each batch

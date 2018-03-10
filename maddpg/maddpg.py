@@ -87,6 +87,8 @@ class MADDPG(object):
       for i in range(env.n):
           obs = obs_n[i]
           act = self.agent_networks[i].get_sampled_action(obs)
+          if self.config.action_clip:
+            act = np.clip(act, -2, 2)
           act_n.append(act)
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
@@ -106,6 +108,9 @@ class MADDPG(object):
     """
       Do a test run to evaluate the network, and log statistics 
       Does NOT populate the experience replay buffer, as this is for evaluation purposes
+    
+      NOTE: We do not clip the action here, since we do not want to explore, we want to just exploit
+      the path we believe is best so far
     """
     j = 0
     total_rewards = []
@@ -193,7 +198,7 @@ class MADDPG(object):
       for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agent_networks[i]
-        agent_net.train_for_batch_samples(samples)
+        agent_net.train_for_batch_samples(samples, agents_list=self.agent_networks)
       
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
