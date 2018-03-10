@@ -122,7 +122,7 @@ class MADDPG(object):
       act_n = []  # list of n actions for this step
       for i in range(env.n):
           obs = obs_n[i]
-          act = self.agent_networks[i].get_sampled_action(obs)
+          act = self.agent_networks[i].get_sampled_action(obs, is_evaluation=True)
           act_n.append(act)
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
