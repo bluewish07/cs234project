@@ -228,9 +228,8 @@ class DDPGActorCritic(object):
         if self.config.grad_clip is False:
             self.train_actor_op = optimizer.minimize(objective, var_list=self.mu_vars)
         else:
-            grads = optimizer.compute_gradients(objective, self.mu_vars)
-            variables = [v for g,v in grads]
-            clipped = [tf.clip_by_norm(g, self.config.clip_val) for g,v in grads]
+            gradients, variables = optimizer.compute_gradients(objective, self.mu_vars)
+            clipped = [tf.clip_by_norm(g, self.config.clip_val) for g in gradients]
             grads = zip(clipped, variables)
             self.train_actor_op = optimizer.apply_gradients(grads, name='clippedgrads')
 
