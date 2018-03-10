@@ -245,7 +245,6 @@ class DDPGActorCritic(object):
         # self.train_actor_op = optimizer.minimize(objective, var_list=self.mu_vars)
         self.train_actor_op = optimizer.apply_gradients(grads_vars)
 
-
         ### update target networks
     def get_assign_ops(self, scope, target_scope):
         op_list = list()
