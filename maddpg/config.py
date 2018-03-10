@@ -1,6 +1,8 @@
 import tensorflow as tf
 
 class config():
+    debug_logging = False
+
     # https://github.com/openai/maddpg
     env_name = "simple_spread"
     algo_name = "MADDPG"

@@ -80,7 +80,7 @@ class MADDPG(object):
     paths = []
     current_path = []
     obs_n = self.current_obs_n
-    while (t < sample_freq or (not replay_buffer.can_sample(self.config.replay_buffer_size))):
+    while (t < sample_freq or (not replay_buffer.can_sample(self.config.batch_size))):
       current_path = []
       # NV: Don't render during path sampling, only render during test runs
       # if self.config.render:
@@ -217,7 +217,7 @@ class MADDPG(object):
  
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
-      if t % self.config.eval_freq:
+      if t % self.config.eval_freq == 0:
         self.test_run(self.env, self.config.batch_size_in_episodes)
         
 
