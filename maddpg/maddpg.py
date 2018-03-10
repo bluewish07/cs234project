@@ -10,7 +10,8 @@ import time
 import inspect
 from utils.general import get_logger, Progbar, export_plot
 from utils.replay_buffer import ReplayBuffer
-from  utils.collisions import count_agent_collisions
+from utils.collisions import count_agent_collisions
+from utils.distance_from_landmarks import get_distance_from_landmarks
 from config import config
 
 from ddpg_actor_critic import DDPGActorCritic
@@ -112,6 +113,8 @@ class MADDPG(object):
     collisions = []
     episode_collisions = 0
     successes = 0
+    agent_distance = []
+    avg_distance_episode = 0
     obs_n = self.current_obs_n
     
     while j < num_episodes:
@@ -138,12 +141,15 @@ class MADDPG(object):
       if np.mean(rew_n) > -0.1:
         successes += 1
       
+      dist = get_distance_from_landmarks(self.env)
+      avg_distance_episode += np.mean(dist)
 
       self.current_episode_length += 1
       if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # end the existing episode
         total_rewards.append(episode_reward)
         collisions.append(episode_collisions)
+        agent_distance.append(avg_distance_episode/self.current_episode_length)
         j += 1
         
         # reset
@@ -152,6 +158,7 @@ class MADDPG(object):
         
         episode_reward = 0
         episode_collisions = 0
+        avg_distance_per_episode = 0
         
         
     # log average episode reward
@@ -166,6 +173,12 @@ class MADDPG(object):
     msg = "Average collisions: {:04.2f} +/- {:04.2f}".format(avg_collisions, sigma_collisions)
     self.logger.info(msg)
     
+    # log of average agent distance
+    avg_distance = np.mean(agent_distance)
+    sigma_agent_distance = np.sqrt(np.var(agent_distance) / len(agent_distance))
+    msg = "Average distance from landmarks: {:04.2f} +/- {:04.2f}".format(avg_distance, sigma_agent_distance)
+    self.logger.info(msg)
+
     # log # of successes
     msg = "Successful episodes: {:d}".format(successes)
     self.logger.info(msg)
