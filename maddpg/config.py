@@ -21,7 +21,7 @@ class config():
     
     # model and training config
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
-    num_batches = 600 # number of batches trained on
+    num_batches = 1500 # number of batches trained on
     batch_size_in_episodes = 40 # number of samples used to compute each policy update
     max_ep_len = 25 # maximum episode length
     batch_size = batch_size_in_episodes * max_ep_len

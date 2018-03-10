@@ -202,7 +202,7 @@ class DDPGActorCritic(object):
                                 n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.softmax)
             # self.mu = tf.Print(self.mu, [self.mu], message="mu", summarize=20)
             self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
-                                       n_layers=self.config.n_layers, size=self.config.layer_size)
+                                       n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.softmax)
         if self.config.random_process_exploration:
             # log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
             log_std = tf.fill([self.action_dim], math.log(self.config.sampling_std))
@@ -380,8 +380,11 @@ class DDPGActorCritic(object):
             update_approx_network = self.update_policy_approx_networks_op[i]
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
-            self.sess.run([update_approx_network, loss, grad_norm], feed_dict={self.action_placeholder : act,
-                                                            self.observation_placeholder : obs})
+            ops_to_run = [update_approx_network]
+            if self.config.debug_logging: ops_to_run += [loss, grad_norm]
+            self.sess.run(ops_to_run,
+                          feed_dict={self.action_placeholder : act,
+                                self.observation_placeholder : obs})
 
     def update_critic_network(self, state, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask, agents_list=None):
         """
@@ -431,7 +434,9 @@ class DDPGActorCritic(object):
             est_actions_by_agent.append(actions_i)
         est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
 
-        self.sess.run([self.critic_network_loss, self.critic_network_grad_norm, self.update_critic_op], feed_dict={self.state_placeholder : state,
+        ops_to_run = [self.update_critic_op]
+        if self.config.debug_logging: ops_to_run += [self.critic_network_loss, self.critic_network_grad_norm]
+        self.sess.run(ops_to_run, feed_dict={self.state_placeholder : state,
                                                         self.actions_n_placeholder: est_actions,
                                                         self.q_next_placeholder : q_next,
                                                         self.reward_placeholder : rewards,
@@ -459,7 +464,9 @@ class DDPGActorCritic(object):
         #                                               self.action_gradients_placeholder : action_gradient})
         #                                               #self.q_value_placeholder_for_policy_gradient : q_values})
         self.sess.run(self.copy_q_op, feed_dict={})
-        self.sess.run([self.objective, self.policy_network_grad_norm, self.train_actor_op], feed_dict={self.state_placeholder : state,
+        ops_to_run = [self.train_actor_op]
+        if self.config.debug_logging: ops_to_run += [self.objective, self.policy_network_grad_norm]
+        self.sess.run(ops_to_run, feed_dict={self.state_placeholder : state,
                                                      self.actions_n_placeholder : actions_n,
                                                      self.observation_placeholder : observation})
 
