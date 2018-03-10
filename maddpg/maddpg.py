@@ -53,9 +53,12 @@ class MADDPG(object):
         agent_net.build(var_scope)
 
   def initialize(self):
-    sess = tf.Session()
+    self.sess = tf.Session()
+    self.add_summary()
+    init = tf.global_variables_initializer()
+    self.sess.run(init)
     for network in self.agent_networks:
-        network.initialize(session=sess)
+      network.initialize(session=self.sess)
 
   def sample_n(self, env, replay_buffer, sample_freq, batch_size):
     """
@@ -162,32 +165,35 @@ class MADDPG(object):
         
         
     # log average episode reward
-    avg_reward = np.mean(total_rewards)
+    self.avg_reward = np.mean(total_rewards)
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
-    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_reward, sigma_reward)
     self.logger.info(msg)
     
     # log # of collisions
-    avg_collisions = np.mean(collisions)
+    self.avg_collisions = np.mean(collisions)
     sigma_collisions = np.sqrt(np.var(collisions) / len(collisions))
-    msg = "Average collisions: {:04.2f} +/- {:04.2f}".format(avg_collisions, sigma_collisions)
+    msg = "Average collisions: {:04.2f} +/- {:04.2f}".format(self.avg_collisions, sigma_collisions)
     self.logger.info(msg)
     
     # log of average agent distance
-    avg_distance = np.mean(agent_distance)
+    self.avg_distance = np.mean(agent_distance)
     sigma_agent_distance = np.sqrt(np.var(agent_distance) / len(agent_distance))
-    msg = "Average distance from landmarks: {:04.2f} +/- {:04.2f}".format(avg_distance, sigma_agent_distance)
+    msg = "Average distance from landmarks: {:04.2f} +/- {:04.2f}".format(self.avg_distance, sigma_agent_distance)
     self.logger.info(msg)
 
     # log # of successes
     msg = "Successful episodes: {:d}".format(successes)
     self.logger.info(msg)
+
+    self.record_summary(self.current_batch_num)
         
   def train(self):
     replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
     self.current_obs_n = self.env.reset()
     self.current_episode_length = 0
     for t in range(self.config.num_batches):
+      self.current_batch_num = t
       self.logger.info("Batch " + str(t) + ":")
       samples = self.sample_n(self.env, replay_buffer, self.config.train_freq, self.config.batch_size)
       for i in range(self.env.n):
@@ -195,6 +201,9 @@ class MADDPG(object):
         agent_net = self.agent_networks[i]
         agent_net.train_for_batch_samples(samples)
       
+      #if(t % self.config.summary_freq == 0):
+      #  self.record_summary(t)
+ 
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
       if True:
@@ -227,9 +236,9 @@ class MADDPG(object):
 
       fd = {
         self.avg_reward_placeholder: self.avg_reward,
-        self.max_reward_placeholder: self.max_reward,
-        self.std_reward_placeholder: self.std_reward,
-        self.eval_reward_placeholder: self.eval_reward,
+        self.avg_collsions_placeholder: self.avg_collisions,
+        self.avg_distance_placeholder: self.avg_distance,
+        #self.eval_reward_placeholder: self.eval_reward,
       }
       summary = self.sess.run(self.merged, feed_dict=fd)
       # tensorboard stuff
@@ -243,16 +252,16 @@ class MADDPG(object):
           """
       # extra placeholders to log stuff from python
       self.avg_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_reward")
-      self.max_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="max_reward")
-      self.std_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="std_reward")
+      self.avg_collsions_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_collsions")
+      self.avg_distance_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_distance")
 
-      self.eval_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="eval_reward")
+      # self.eval_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="eval_reward")
 
       # extra summaries from python -> placeholders
       tf.summary.scalar("Avg Reward", self.avg_reward_placeholder)
-      tf.summary.scalar("Max Reward", self.max_reward_placeholder)
-      tf.summary.scalar("Std Reward", self.std_reward_placeholder)
-      tf.summary.scalar("Eval Reward", self.eval_reward_placeholder)
+      tf.summary.scalar("Avg Collisions", self.avg_collsions_placeholder)
+      tf.summary.scalar("Avg Distance", self.avg_distance_placeholder)
+      # tf.summary.scalar("Eval Reward", self.eval_reward_placeholder)
 
       # logging
       self.merged = tf.summary.merge_all()
