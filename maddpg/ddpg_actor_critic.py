@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from config import config
 from utils.general import get_logger, export_plot
-from utils.network import build_mlp
+from utils.network import build_mlp, entropy
 from utils.ornstein_uhlenbeck import OrnsteinUhlenbeckActionNoise
 
 
@@ -78,6 +78,7 @@ class DDPGActorCritic(object):
         self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
 
 
+
     ### actor networks for simulating other agents
     def build_policy_approx_networks(self):
         """
@@ -85,22 +86,29 @@ class DDPGActorCritic(object):
         :return: None
         """
         policy_approximates = []
+        logprobs = []
         log_stds = []
         with tf.variable_scope(self.policy_approx_networks_scope):
             for i in range(self.env.n):
                 if i == self.agent_idx:
                     policy_approximates.append(None)
                     log_stds.append(None)
+                    logprobs.append(None)
                     continue
                 scope = "agent_" + str(i)
                 approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
-                                   self.config.layer_size, output_activation=tf.nn.softmax)
+                                                       self.config.layer_size, output_activation=tf.nn.softmax)
+                # approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
+                #                    self.config.layer_size, output_activation=None)
+                # logprobs.append(tf.nn.softmax(approx, axis=-1))
                 policy_approximates.append(approx)
                 with tf.variable_scope(scope):
                     log_std = tf.get_variable("log_std", shape=[self.action_dim], dtype=tf.float32)
                     log_stds.append(log_std)
 
+        logprobs = policy_approximates
         self.policy_approximates = policy_approximates
+        self.policy_approximates_log_probs = logprobs
         self.policy_approx_log_stds = log_stds
 
     def add_update_policy_approx_networks_op(self):
@@ -119,12 +127,14 @@ class DDPGActorCritic(object):
                 continue
             log_std = self.policy_approx_log_stds[i]
             #TODO later: we can try other distributions as well?
-            policy_approx = self.policy_approximates[i]
-            dist = tf.contrib.distributions.Categorical(probs=policy_approx)
+            prob = self.policy_approximates_log_probs[i]
+            logits = self.policy_approximates[i]
             action_logits = tf.nn.softmax(self.action_placeholder)
-            logprob = -tf.nn.softmax_cross_entropy_with_logits(labels=action_logits, logits=policy_approx)
-            entropy = dist.entropy()
-            loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * entropy)
+            logprob = -tf.nn.softmax_cross_entropy_with_logits(labels=action_logits, logits=logits)
+            dist = tf.contrib.distributions.Categorical(probs=prob)
+            logits_entropy = dist.entropy()
+            #logits_entropy = entropy(logits)
+            loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * logits_entropy)
             self.policy_approx_networks_losses[i] = tf.Print(loss, [loss], message="agent_"+str(i)+" loss:")
             optimizer = tf.train.AdamOptimizer(self.lr)
             combined_scope = self.agent_scope + "/" + self.policy_approx_networks_scope + "/" + "agent_" + str(i)
@@ -166,7 +176,7 @@ class DDPGActorCritic(object):
 
     def add_update_critic_network_op(self):
         future_q = self.q_next_placeholder * tf.cast(tf.logical_not(self.done_mask_placeholder), dtype=tf.float32)
-        #future_q = tf.Print(future_q, [tf.shape(future_q)], message="future q")
+        # if self.config.debug_logging: future_q = tf.Print(future_q, [future_q, tf.shape(future_q)], message="future q")
         y = self.reward_placeholder + self.config.gamma * future_q
         if self.config.debug_logging: y = tf.Print(y, [y, tf.shape(y)], message="y")
         loss = tf.losses.mean_squared_error(y, tf.squeeze(self.q, axis=1))
@@ -185,11 +195,6 @@ class DDPGActorCritic(object):
             grads_vars = zip(clipped, variables)
         self.update_critic_op = optimizer.apply_gradients(grads_vars)
 
-        ### actor network
-        # def add_actor_network_placeholders_op(self):
-        #   with tf.variable_scope(self.actor_network_scope):
-        #     # self.q_value_placeholder_for_policy_gradient = tf.placeholder(tf.float32, shape=(None))
-        #     #self.action_gradients_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
 
     def build_policy_network_op(self):
         """
@@ -211,17 +216,6 @@ class DDPGActorCritic(object):
             dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu, std)
             self.sample_action_op = dist.sample()
 
-    # def add_actor_gradients_op(self):
-    #   """
-    #     http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
-    #     :return: None
-    #   """
-    #   action_gradient = tf.gradients(self.q, self.action_logits_placeholder)
-    #   combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
-    #   self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-    #   actor_gradients_summed_over_batch = tf.gradients(self.action_logits_placeholder, self.mu_vars, -1 * self.action_gradients_placeholder)
-    #   self.actor_gradients = [grad / tf.shape(self.action_logits_placeholder)[0] for grad in actor_gradients_summed_over_batch]
-    #   # list(map(lambda x: tf.div(x, tf.shape(self.action_logits_placeholder)[0]), actor_gradients_summed_over_batch))
 
     def add_actor_loss_op(self):
         slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
@@ -231,9 +225,12 @@ class DDPGActorCritic(object):
         input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(actions_n)],
                           axis=1)
 
-        self.q_copy_scope = "q_copy"
-        with tf.variable_scope(self.actor_network_scope):
-            self.q_copy = build_mlp(input, 1, self.q_copy_scope, self.config.n_layers, self.config.layer_size)
+        combined_q_scope = self.critic_network_scope + "/" + self.q_scope
+        self.q_reuse = build_mlp(input, 1, combined_q_scope, self.config.n_layers, self.config.layer_size)
+
+        # self.q_copy_scope = "q_copy"
+        # with tf.variable_scope(self.actor_network_scope):
+        #     self.q_copy = build_mlp(input, 1, self.q_copy_scope, self.config.n_layers, self.config.layer_size)
 
 
     def add_optimizer_op(self):
@@ -241,17 +238,18 @@ class DDPGActorCritic(object):
 
             :return: None
         """
-        combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
-        q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
-
-        copy_q_ops = self.get_copy_ops(combined_q_scope, q_copy_scope)
-        self.copy_q_op = tf.group(*copy_q_ops)
+        # combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
+        # q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
+        # copy_q_ops = self.get_copy_ops(combined_q_scope, q_copy_scope)
+        # self.copy_q_op = tf.group(*copy_q_ops)
 
         optimizer = tf.train.AdamOptimizer(self.lr)
         combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
         self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-        if self.config.debug_logging: self.q_copy = tf.Print(self.q_copy, [self.q_copy], message="q copy")
-        self.objective = -tf.reduce_mean(self.q_copy)
+        # if self.config.debug_logging: self.q_copy = tf.Print(self.q_copy, [self.q_copy], message="q copy")
+
+        self.objective = -tf.reduce_mean(self.q_reuse)
+        # self.objective = -tf.reduce_mean(self.q_copy)
         if self.config.debug_logging: self.objective = tf.Print(self.objective, [self.objective], message="policy network objective: ")
         self.policy_network_objective = self.objective
         grads_vars = optimizer.compute_gradients(self.objective, self.mu_vars)
@@ -290,14 +288,6 @@ class DDPGActorCritic(object):
             assign_op = tf.assign(target_var, new_target_var)
             op_list.append(assign_op)
 
-        # vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in vars])
-        # target_vars_by_name_suffix = dict([(var.name[var.name.rfind('/'):], var) for var in target_vars])
-        # for var_name_suffix, var in vars_by_name_suffix.iteritems():
-        #   target_var = target_vars_by_name_suffix[var_name_suffix]
-        #   new_target_var = self.config.tau * var + (1 - self.config.tau) * target_var
-        #   assign_op = tf.assign(target_var, new_target_var)
-        #   op_list.append(assign_op)
-
         return op_list
 
     def add_update_target_op(self):
@@ -335,9 +325,7 @@ class DDPGActorCritic(object):
         self.add_critic_network_op()
         self.add_update_critic_network_op()
         # create actor net
-        # self.add_actor_network_placeholders_op()
         self.build_policy_network_op()
-        #self.add_actor_gradients_op()
         self.add_actor_loss_op()
         self.add_optimizer_op() # depends on self.q
 
@@ -405,7 +393,7 @@ class DDPGActorCritic(object):
                 next_actions_i = self.sess.run(self.target_mu, feed_dict={self.observation_placeholder: next_observations_i})
             else:
                 if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
-                  next_actions_i = self.sess.run(self.policy_approximates[i],
+                  next_actions_i = self.sess.run(self.policy_approximates_log_probs[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
                 else:
                   # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
@@ -429,7 +417,7 @@ class DDPGActorCritic(object):
             if i == self.agent_idx:
                 actions_i = self.sess.run(self.mu, feed_dict={self.observation_placeholder: observations_i})
             else:
-                actions_i = self.sess.run(self.policy_approximates[i],
+                actions_i = self.sess.run(self.policy_approximates_log_probs[i],
                                           feed_dict={self.observation_placeholder: observations_i})
             est_actions_by_agent.append(actions_i)
         est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
@@ -456,14 +444,9 @@ class DDPGActorCritic(object):
         TODO: we might want more granular input args than samples, to avoid duplicate numpy operations
         :return:
         """
-        # q_values = self.sess.run(self.q, feed_dict={self.state_placeholder : state,
-        #                                             self.actions_n_placeholder : actions_n})
-        # action_gradient = tf.gradients(q_values, self.action_logits_placeholder)
-        # _, action_logits = self.get_action_and_logits(observation)
-        # self.sess.run(self.train_actor_op, feed_dict={self.action_logits_placeholder : action_logits,
-        #                                               self.action_gradients_placeholder : action_gradient})
-        #                                               #self.q_value_placeholder_for_policy_gradient : q_values})
-        self.sess.run(self.copy_q_op, feed_dict={})
+
+        # self.sess.run(self.copy_q_op, feed_dict={})
+
         ops_to_run = [self.train_actor_op]
         if self.config.debug_logging: ops_to_run += [self.objective, self.policy_network_grad_norm]
         self.sess.run(ops_to_run, feed_dict={self.state_placeholder : state,
@@ -485,7 +468,6 @@ class DDPGActorCritic(object):
         actions = action_logits
         if self.config.discrete:
             action_indices = tf.argmax(action_logits, axis=1)
-            # action_indices = tf.squeeze(tf.multinomial(action_logits, 1), axis=1)
             actions = tf.one_hot(action_indices, self.action_dim)
         return actions, action_logits     
     
@@ -528,6 +510,8 @@ class DDPGActorCritic(object):
                   samples: a tuple (obs_batch, act_batch, rew_batch, next_obs_batch, done_mask)
                         obs_batch: np.array of shape (None, num_agent, observation_dim)
         """
+        all_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.agent_scope)
+
 
         state, true_actions, rewards, next_state, done_mask = samples
         # update this agent's policy approx networks for other agents
