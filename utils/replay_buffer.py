@@ -52,6 +52,7 @@ class ReplayBuffer(object):
         self.action = np.empty([self.size, num_agents, act_dim], dtype=np.float32)
         self.reward = np.empty([self.size, num_agents], dtype=np.float32)
         self.done = np.empty([self.size], dtype=np.bool)
+        self.next_obs = np.empty([self.size, num_agents, obs_dim], dtype=np.float32)
 
     def can_sample(self, batch_size):
         """Returns true if `batch_size` different transitions can be sampled from the buffer."""
@@ -61,7 +62,7 @@ class ReplayBuffer(object):
         obs_batch      = self.obs[idxes]
         act_batch      = self.action[idxes]
         rew_batch      = self.reward[idxes]
-        next_obs_batch = self.obs[[idx+1 for idx in idxes]]
+        next_obs_batch = self.next_obs[idxes]
         done_mask      = np.array([1.0 if self.done[idx] else 0.0 for idx in idxes], dtype=np.float32)
 
         return obs_batch, act_batch, rew_batch, next_obs_batch, done_mask
@@ -101,7 +102,7 @@ class ReplayBuffer(object):
             Array of shape (batch_size,) and dtype np.float32
         """
         assert self.can_sample(batch_size)
-        idxes = sample_n_unique(lambda: random.randint(0, self.num_in_buffer - 2), batch_size)
+        idxes = sample_n_unique(lambda: random.randint(0, self.num_in_buffer - 1), batch_size)
         return self._encode_sample(idxes)
 
     # def encode_recent_observation(self):
@@ -167,7 +168,7 @@ class ReplayBuffer(object):
 
         return ret
 
-    def store_effect(self, idx, action, reward, done):
+    def store_effect(self, idx, action, reward, done, next_obs):
         """Store effects of action taken after obeserving frame stored
         at index idx. The reason `store_frame` and `store_effect` is broken
         up into two functions is so that once can call `encode_recent_observation`
@@ -187,4 +188,5 @@ class ReplayBuffer(object):
         self.action[idx] = action
         self.reward[idx] = reward
         self.done[idx]   = all(done)
+        self.next_obs[idx] = next_obs
 
