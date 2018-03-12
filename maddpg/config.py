@@ -37,17 +37,20 @@ class config():
     replay_buffer_size = 1000000
     # parameters for the policy and baseline models
     n_layers = 2
-    layer_size = 128
+    layer_size = 64
     activation=tf.nn.relu 
     
     # added configs
     use_true_actions = True
     random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
-    sampling_std = .5 
+    sampling_std = .3
     grad_clip = True # if true, clip the gradient using clip_val
     clip_val = .5
     
     action_clip = True #if true, clip actions taken to be between -2 and 2 (used in maddpg.sample_n)
+
+    use_batch_normalization = False
+    scale_reward = False
 
 
     # since we start new episodes for each batch

@@ -7,7 +7,8 @@ def build_mlp(
         scope,
         n_layers,
         size,
-        output_activation=None):
+        output_activation=None,
+        use_batch_normalization=False):
     '''
     Build a feed forward network (multi-layer-perceptron, or mlp)
     with 'n_layers' hidden layers, each of size 'size' units.
@@ -36,13 +37,15 @@ def build_mlp(
     #########   YOUR CODE HERE - 7-20 lines.   ############
     h = mlp_input
     out = mlp_input
+    normalizer = None
+    if use_batch_normalization: normalizer = tf.contrib.layers.batch_norm
 
     with tf.variable_scope(scope):
         n = tf.layers.flatten(mlp_input)
         for i in range(n_layers):
             h_scope = "h" + str(i)
-            n = tf.contrib.layers.fully_connected(n, num_outputs=size, activation_fn=tf.nn.relu, reuse=tf.AUTO_REUSE, scope=h_scope)
-        out = tf.contrib.layers.fully_connected(n, num_outputs=output_size, activation_fn=output_activation, reuse=tf.AUTO_REUSE, scope="out")
+            n = tf.contrib.layers.fully_connected(n, num_outputs=size, activation_fn=tf.nn.relu, normalizer_fn=normalizer, reuse=tf.AUTO_REUSE, scope=h_scope)
+        out = tf.contrib.layers.fully_connected(n, num_outputs=output_size, activation_fn=output_activation, normalizer_fn=None, reuse=tf.AUTO_REUSE, scope="out")
 
     return out
 

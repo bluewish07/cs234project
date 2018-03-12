@@ -95,6 +95,7 @@ class MADDPG(object):
           act_n.append(act)
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
+      if self.config.scale_reward: rew_n = [rew * .1 for rew in rew_n]
       replay_buffer.store_effect(idx, act_n, rew_n, done_n, obs_n)
       self.current_obs_n = obs_n
 
