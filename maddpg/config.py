@@ -21,12 +21,13 @@ class config():
     
     # model and training config
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
-    num_batches = 15000 # number of batches trained on
+    num_batches = 60000 # number of batches trained on
     batch_size_in_episodes = 1024 # number of samples used to compute each policy update
     max_ep_len = 25 # maximum episode length
-    batch_size = batch_size_in_episodes * max_ep_len
+    batch_size = 1024 # batch_size_in_episodes * max_ep_len
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
-    eval_freq = 250 # every eval_freq batches, evaluate
+    eval_freq = 50 # 250 # every eval_freq batches, evaluate
+    eval_episodes = 10 # number of episodes to do an evaluation run on
     learning_rate = 0.01
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
@@ -42,7 +43,7 @@ class config():
     
     # added configs
     use_true_actions = True
-    random_process_exploration = 0  # 0 = default open ai exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
+    random_process_exploration = 1  # 0 = default open ai exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
     sampling_std = .3
     grad_clip = True # if true, clip the gradient using clip_val
     clip_val = .5

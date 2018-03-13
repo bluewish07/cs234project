@@ -15,6 +15,7 @@ from utils.distance_from_landmarks import get_distance_from_landmarks
 from config import config
 
 from ddpg_actor_critic import DDPGActorCritic
+from utils.memory import Memory
 
 #TODO: evaluate
 
@@ -80,11 +81,7 @@ class MADDPG(object):
     paths = []
     current_path = []
     obs_n = self.current_obs_n
-    while (t < sample_freq or (not replay_buffer.can_sample(self.config.batch_size))):
-      current_path = []
-      # NV: Don't render during path sampling, only render during test runs
-      # if self.config.render:
-        # self.env.render()
+    while (t < sample_freq or (not replay_buffer.can_sample(batch_size))):
       idx = replay_buffer.store_frame(obs_n)
       act_n = []  # list of n actions for this step
       for i in range(env.n):
@@ -95,19 +92,22 @@ class MADDPG(object):
           act_n.append(act)
 
       obs_n, rew_n, done_n, info_n = env.step(act_n)
+      # next_obs_n, rew_n, done_n, info_n = env.step(act_n)
       if self.config.scale_reward: rew_n = [rew * .1 for rew in rew_n]
       replay_buffer.store_effect(idx, act_n, rew_n, done_n, obs_n)
-      self.current_obs_n = obs_n
+      # replay_buffer.remember(obs_n, act_n, rew_n, next_obs_n, done_n[0])
 
       t += 1
       self.current_episode_length += 1
-      if (all(done_n) or self.current_episode_length >= self.config.max_ep_len):
+      if (any(done_n) or self.current_episode_length >= self.config.max_ep_len):
         # reset
         # print(act_n)
         # print(rew_n)
-        self.current_obs_n = self.env.reset()
+        obs_n = self.env.reset()
         self.current_episode_length = 0
-    
+        
+      self.current_obs_n = obs_n
+    # return replay_buffer.sample(batch_size, env.n)
     return replay_buffer.sample(batch_size)
 
   def test_run(self, env, num_episodes):
@@ -134,7 +134,7 @@ class MADDPG(object):
       if self.config.render:
         time.sleep(0.1)
         self.env.render()
-        continue
+
       act_n = []  # list of n actions for this step
       for i in range(env.n):
           obs = obs_n[i]
@@ -164,7 +164,7 @@ class MADDPG(object):
         # end the existing episode
         total_rewards.append(episode_reward)
         collisions.append(episode_collisions)
-        agent_distance.append(avg_distance_episode/self.current_episode_length)
+        agent_distance.append(avg_distance_episode/episode_length)
 
         episode_length = 0
         obs_n = self.env.reset()
@@ -201,15 +201,16 @@ class MADDPG(object):
     self.record_summary(self.current_batch_num)
         
   def train(self):
+    start = time.time()
     replay_buffer = ReplayBuffer(self.config.replay_buffer_size, self.observation_dim, self.action_dim, self.env.n)
+    # replay_buffer = Memory(self.config.replay_buffer_size)
     self.current_obs_n = self.env.reset()
     self.current_episode_length = 0
     for t in range(self.config.num_batches):
       self.current_batch_num = t
-      self.logger.info("Batch " + str(t) + ":")
+      
       samples = self.sample_n(self.env, replay_buffer, self.config.train_freq, self.config.batch_size)
       for i in range(self.env.n):
-        self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agent_networks[i]
         agent_net.train_for_batch_samples(samples, agents_list=self.agent_networks)
       
@@ -219,10 +220,11 @@ class MADDPG(object):
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
       if t % self.config.eval_freq == 0:
-        self.test_run(self.env, self.config.batch_size_in_episodes)
-        
+        self.logger.info("Batch " + str(t) + ":")
+        self.test_run(self.env, self.config.eval_episodes)
 
     self.logger.info("- Training all done.")
+    self.logger.info("Total training time: " + str(time.time() - start) + " seconds.")
     
 
   def run(self):
