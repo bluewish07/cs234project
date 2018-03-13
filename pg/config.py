@@ -31,7 +31,7 @@ class config():
     # parameters for the policy and baseline models
     n_layers = 2
     layer_size = 128
-    activation=tf.nn.relu 
+    activation=tf.nn.relu
 
 
     # since we start new episodes for each batch
