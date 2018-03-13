@@ -10,6 +10,9 @@ import time
 import inspect
 from utils.general import get_logger, Progbar, export_plot
 from config import config
+from utils.collisions import count_agent_collisions
+from utils.distance_from_landmarks import get_distance_from_landmarks
+
   
 from pg import PG
 
@@ -44,9 +47,10 @@ class MultiAgentPG(object):
         agent_net.build()
 
   def initialize(self):
-    sess = tf.Session()
+    self.sess = tf.Session()
+    self.add_summary()
     for network in self.agents:
-        network.initialize(session=sess)
+        network.initialize(session=self.sess)
 
   def sample_paths_n(self, num_episodes=None):
     """
@@ -68,6 +72,13 @@ class MultiAgentPG(object):
     paths_n = []
     t = 0
         
+    episode_reward = 0
+    episode_collisions = 0
+    avg_distance_episode = 0
+    total_rewards = []
+    collisions = []
+    agent_distance = []
+
     for i in range(self.env.n):
       paths_n.append([])
 
@@ -101,11 +112,28 @@ class MultiAgentPG(object):
         obs_n, rew_n, done_n, info_n = self.env.step(action)
         for i in range(self.env.n):
           rewards_n[i].append(rew_n[i])
+
+        # collect stats
+        temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
+        episode_reward += temp # sum reward across agents to give episode reward
+        episode_collisions += count_agent_collisions(self.env)
+        avg_distance_episode += get_distance_from_landmarks(self.env)
+
         t += 1
         if (done_n[0] or step == self.config.max_ep_len - 1):
+          total_rewards.append(episode_reward)
+          collisions.append(episode_collisions)
+          agent_distance.append(avg_distance_episode/self.config.max_ep_len)
+          episode_reward = 0
+          episode_collisions = 0
+          avg_distance_episode = 0
           break
         if (not num_episodes) and t == self.config.batch_size:
           break
+
+      self.avg_reward = np.mean(total_rewards)
+      self.avg_collisions = np.mean(collisions)
+      self.avg_distance = np.mean(agent_distance)
 
       # form a path for each agent
       for i in range(self.env.n):
@@ -165,3 +193,32 @@ class MultiAgentPG(object):
 
     # model
     self.train()
+
+
+################################  RECORD AND SUMMARY  #############################################
+
+  def record_summary(self, t):
+    fd = {
+      self.avg_reward_placeholder: self.avg_reward,
+      self.avg_collsions_placeholder: self.avg_collisions,
+      self.avg_distance_placeholder: self.avg_distance,
+    }
+
+    summary = self.sess.run(self.merged, feed_dict=fd)
+    self.file_writer.add_summary(summary, t)
+
+  def add_summary(self):
+    # extra placeholders to log stuff from python
+    self.avg_reward_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_reward")
+    self.avg_collsions_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_collsions")
+    self.avg_distance_placeholder = tf.placeholder(tf.float32, shape=(), name="avg_distance")
+
+    # extra summaries from python -> placeholders
+    tf.summary.scalar("Avg Reward", self.avg_reward_placeholder)
+    tf.summary.scalar("Avg Collisions", self.avg_collsions_placeholder)
+    tf.summary.scalar("Avg Distance", self.avg_distance_placeholder)
+
+    # logging
+    self.merged = tf.summary.merge_all()
+    self.file_writer = tf.summary.FileWriter(self.config.output_path, self.sess.graph)
+
