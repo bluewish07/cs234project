@@ -15,7 +15,6 @@ from utils.distance_from_landmarks import get_distance_from_landmarks
 from config import config
 
 from ddpg_actor_critic import DDPGActorCritic
-from utils.memory import Memory
 
 #TODO: evaluate
 
