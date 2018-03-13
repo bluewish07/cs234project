@@ -203,36 +203,33 @@ class DDPGActorCritic(object):
         self.mu_scope = "mu"
         self.target_mu_scope = "target_mu"
         with tf.variable_scope(self.actor_network_scope):
-            # self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
-            #                     n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.softmax)
-
             self.mu = build_mlp(self.observation_placeholder, self.action_dim, self.mu_scope,
                                 n_layers=self.config.n_layers, size=self.config.layer_size,
                                 output_activation=None, use_batch_normalization=self.config.use_batch_normalization)
             if self.config.debug_logging: self.mu = tf.Print(self.mu, [self.mu], message="mu", summarize=20)
-
-            self.mu_noise = tf.nn.softmax(self.mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.mu)))), axis=-1)
-            if self.config.debug_logging: self.mu_noise = tf.Print(self.mu_noise, [self.mu_noise], summarize=10,
-                                                                   message="action logits")
-
-
-
-            # self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
-            #                            n_layers=self.config.n_layers, size=self.config.layer_size, output_activation=tf.nn.softmax)
             self.target_mu = build_mlp(self.observation_placeholder, self.action_dim, self.target_mu_scope,
                                        n_layers=self.config.n_layers, size=self.config.layer_size,
-                                       output_activation=None, use_batch_normalization=self.config.use_batch_normalization)
-            self.target_mu_noise = tf.nn.softmax(self.target_mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.target_mu)))), axis=-1)
+                                       output_activation=None,
+                                       use_batch_normalization=self.config.use_batch_normalization)
 
+            self.mu_normalized = tf.nn.softmax(self.mu, axis=-1)
+            self.target_mu_normalized = tf.nn.softmax(self.target_mu, axis=-1)
 
-        # if self.config.random_process_exploration:
-        #     # log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
-        #     log_std = tf.fill([self.action_dim], math.log(self.config.sampling_std))
-        #     std = tf.exp(log_std)
-        #     #std = tf.Print(std, [std], message="std dev: ")
-        #     dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu, std)
-        #     self.sample_action_op = dist.sample()
-        self.sample_action_op = self.mu_noise
+            if self.config.random_process_exploration == 0:
+                self.mu_noise = tf.nn.softmax(self.mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.mu)))), axis=-1)
+                if self.config.debug_logging: self.mu_noise = tf.Print(self.mu_noise, [self.mu_noise], summarize=10,
+                                                                   message="action logits")
+                self.target_mu_noise = tf.nn.softmax(self.target_mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.target_mu)))), axis=-1)
+            elif self.config.random_process_exploration == 1:
+                self.mu_noise = self.mu_normalized
+                self.target_mu_noise = self.target_mu_normalized
+            elif self.config.random_process_exploration == 2:
+                log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
+                std = tf.exp(log_std)
+                dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu_normalized, std)
+                self.mu_noise = dist.sample()
+                self.target_mu_noise = self.target_mu_normalized
+
 
 
     def add_actor_loss_op(self):
@@ -246,28 +243,18 @@ class DDPGActorCritic(object):
         combined_q_scope = self.critic_network_scope + "/" + self.q_scope
         self.q_reuse = build_mlp(input, 1, combined_q_scope, self.config.n_layers, self.config.layer_size)
 
-        # self.q_copy_scope = "q_copy"
-        # with tf.variable_scope(self.actor_network_scope):
-        #     self.q_copy = build_mlp(input, 1, self.q_copy_scope, self.config.n_layers, self.config.layer_size)
-
 
     def add_optimizer_op(self):
         """
 
             :return: None
         """
-        # combined_q_scope = self.agent_scope + "/" + self.critic_network_scope + "/" + self.q_scope
-        # q_copy_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.q_copy_scope
-        # copy_q_ops = self.get_copy_ops(combined_q_scope, q_copy_scope)
-        # self.copy_q_op = tf.group(*copy_q_ops)
 
         optimizer = tf.train.AdamOptimizer(self.lr)
         combined_scope = self.agent_scope + "/" + self.actor_network_scope + "/" + self.mu_scope
         self.mu_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
-        # if self.config.debug_logging: self.q_copy = tf.Print(self.q_copy, [self.q_copy], message="q copy")
 
         self.objective = -tf.reduce_mean(self.q_reuse)
-        # self.objective = -tf.reduce_mean(self.q_copy)
         if self.config.debug_logging: self.objective = tf.Print(self.objective, [self.objective], message="policy network objective: ")
         self.policy_network_objective = self.objective
         grads_vars = optimizer.compute_gradients(self.objective, self.mu_vars)
@@ -288,16 +275,16 @@ class DDPGActorCritic(object):
         self.train_actor_op = optimizer.apply_gradients(grads_vars)
 
         ### update target networks
-    def get_copy_ops(self, scope, target_scope):
-        op_list = list()
-
-        vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
-        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_scope)
-        for idx, var in enumerate(vars):
-            target_var = target_vars[idx]
-            assign_op = tf.assign(target_var, var)
-            op_list.append(assign_op)
-        return op_list
+    # def get_copy_ops(self, scope, target_scope):
+    #     op_list = list()
+    #
+    #     vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+    #     target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, target_scope)
+    #     for idx, var in enumerate(vars):
+    #         target_var = target_vars[idx]
+    #         assign_op = tf.assign(target_var, var)
+    #         op_list.append(assign_op)
+    #     return op_list
 
     def get_assign_ops(self, scope, target_scope):
         op_list = list()
@@ -435,20 +422,6 @@ class DDPGActorCritic(object):
                                                          self.actions_n_placeholder : est_next_actions})
         q_next = np.squeeze(q_next, axis=1)
 
-        # Then get an estimated action from each agent approx network given current observation
-        # Specifically, for the current agent, get the action from the policy network
-        # for all other agents, get the action from the approx network
-        # est_actions_by_agent = []
-        # for i in range(self.env.n):
-        #     observations_i = observations_by_agent[i]
-        #     actions_i = None
-        #     if i == self.agent_idx:
-        #         actions_i = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: observations_i})
-        #     else:
-        #         actions_i = self.sess.run(self.policy_approximates_log_probs[i],
-        #                                   feed_dict={self.observation_placeholder: observations_i})
-        #     est_actions_by_agent.append(actions_i)
-        # est_actions = np.swapaxes(est_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
 
         ops_to_run = [self.update_critic_op]
         if self.config.use_batch_normalization:
@@ -489,21 +462,21 @@ class DDPGActorCritic(object):
 
 
 
-    def get_action_and_logits(self, observations):
-        """
-        Run
-        :param observations: batched observations
-        :return: action: shape=(None, action_dim). if discrete, a single action is one-hot vector
-                 action_logits: shape=(None, action_dim)
-                                for discrete case, this is direct output of mu
-                                for none-discrete case, this is the same as action
-        """
-        action_logits = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: observations})
-        actions = action_logits
-        if self.config.discrete:
-            action_indices = tf.argmax(action_logits, axis=1)
-            actions = tf.one_hot(action_indices, self.action_dim)
-        return actions, action_logits     
+    # def get_action_and_logits(self, observations):
+    #     """
+    #     Run
+    #     :param observations: batched observations
+    #     :return: action: shape=(None, action_dim). if discrete, a single action is one-hot vector
+    #              action_logits: shape=(None, action_dim)
+    #                             for discrete case, this is direct output of mu
+    #                             for none-discrete case, this is the same as action
+    #     """
+    #     action_logits = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: observations})
+    #     actions = action_logits
+    #     if self.config.discrete:
+    #         action_indices = tf.argmax(action_logits, axis=1)
+    #         actions = tf.one_hot(action_indices, self.action_dim)
+    #     return actions, action_logits
     
     def get_sampled_action(self, observation, is_evaluation=False):
         """
@@ -514,26 +487,23 @@ class DDPGActorCritic(object):
                          otherwise, shape=(action_dim)
         """
         batch = np.expand_dims(observation, 0)
-        action, logits = None, None
+        action = None
 
-        if self.config.random_process_exploration == 2 and not is_evaluation: # dist sampling
-            logits_batched, action_batched = self.sess.run([self.mu_noise, self.sample_action_op], feed_dict={self.observation_placeholder: batch})
-            logits = logits_batched[0]
-            #action = action_batched[0]
-            action = logits
-        else:
-            actions, action_logits = self.get_action_and_logits(batch)
-            action = actions[0]
-            if self.config.random_process_exploration == 1 and not is_evaluation: # ornstein-uhlenbeck
-                action = action + self.noise()    
-            if is_evaluation:
-                return action
-            logits = action_logits[0]
+        if is_evaluation:
+            action_batched = None
+            if self.config.run_evaluation_with_noise:
+                action_batched = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: batch})
+            else:
+                action_batched = self.sess.run(self.mu_normalized, feed_dict={self.observation_placeholder: batch})
+            action = action_batched[0]
+            return action
 
-        # self.logger.info("action logits: ")
-        # self.logger.info(logits)
-        # self.logger.info("sampled action: ")
-        # self.logger.info(action)
+
+        action_batched = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: batch})
+        action = action_batched[0]
+        if self.config.random_process_exploration == 1: # ornstein-uhlenbeck
+            action = action + self.noise()
+
         return action
 
 

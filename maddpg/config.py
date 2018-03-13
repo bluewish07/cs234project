@@ -26,7 +26,7 @@ class config():
     max_ep_len = 25 # maximum episode length
     batch_size = batch_size_in_episodes * max_ep_len
     train_freq = 100 # do a training step after every train_freq samples added to replay buffer
-    eval_freq = 25 # every eval_freq batches, evaluate
+    eval_freq = 250 # every eval_freq batches, evaluate
     learning_rate = 0.01
     gamma              = .95 # the discount factor
     policy_approx_lambda = .001
@@ -42,7 +42,7 @@ class config():
     
     # added configs
     use_true_actions = True
-    random_process_exploration = 2  # 0 = no exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
+    random_process_exploration = 0  # 0 = default open ai exploration, 1 = ornstein uhlenbeck 2 = sampling from dist
     sampling_std = .3
     grad_clip = True # if true, clip the gradient using clip_val
     clip_val = .5
@@ -51,6 +51,8 @@ class config():
 
     use_batch_normalization = False
     scale_reward = False
+
+    run_evaluation_with_noise = True
 
 
     # since we start new episodes for each batch
