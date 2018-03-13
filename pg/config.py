@@ -16,6 +16,8 @@ class config():
     record_freq = 5
     summary_freq = 1
 
+    eval_freq = 250  # every eval_freq batches, evaluate
+
     
     # model and training config
     num_batches = 15000 # number of batches trained on

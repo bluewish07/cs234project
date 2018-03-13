@@ -55,6 +55,7 @@ class MultiAgentPG(object):
   def sample_paths_n(self, num_episodes=None):
     """
           Sample paths for all agents for the environment.
+          Prefers num_episodes specified over batch_size defined
 
           Args:
                 num_episodes:   the number of episodes to be sampled
@@ -171,7 +172,8 @@ class MultiAgentPG(object):
         agent_net = self.agents[i]
         agent_net.train_for_batch_paths(paths_n[i])
 
-      self.evaluate(self.config.batch_size_in_episodes)
+      if t % self.config.eval_freq == 0:
+        self.evaluate(self.config.batch_size_in_episodes)
 
     self.logger.info("- Training all done.")
 
