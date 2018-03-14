@@ -21,6 +21,7 @@ class config():
     
     # model and training config
     num_batches = 15000 # number of batches trained on
+    batch_size = 1024 # unused
     batch_size_in_episodes = 1024 # number of episodes used to compute each policy update
     max_ep_len = 25 # maximum episode length
     batch_size = 1024 # number of steps used to compute each policy update
@@ -31,7 +32,6 @@ class config():
     # parameters for the policy and baseline models
     n_layers = 2
     layer_size = 128
-    activation=tf.nn.relu 
 
 
     # since we start new episodes for each batch

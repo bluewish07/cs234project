@@ -526,6 +526,7 @@ class DDPGActorCritic(object):
         next_observations_by_agent = np.swapaxes(next_state, 0, 1)
         observation_for_current_agent = observations_by_agent[self.agent_idx]
         reward_for_current_agent = rewards_by_agent[self.agent_idx]
+        
         self.update_policy_approx_networks(observations_by_agent, true_actions_by_agent)
 
         # update centralized Q network
