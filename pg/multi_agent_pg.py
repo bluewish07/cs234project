@@ -73,17 +73,14 @@ class MultiAgentPG(object):
     paths_n = []
     t = 0
         
-    episode_reward = 0
-    episode_collisions = 0
-    avg_distance_episode = 0
-    total_rewards = []
-    collisions = []
-    agent_distance = []
+    self.total_rewards = []
+    self.collisions = []
+    self.agent_distance = []
 
     for i in range(self.env.n):
       paths_n.append([])
 
-    while (num_episodes or t < self.config.batch_size):
+    while (t < num_episodes): # or t < self.config.batch_size):
       obs_n = self.env.reset() # list of n observations after initial setup
       observations_n, actions_n, rewards_n = [], [], [] # holds values for each agent
 
@@ -92,6 +89,9 @@ class MultiAgentPG(object):
         actions_n.append([])
         rewards_n.append([])
         
+      self.episode_reward = 0
+      self.episode_collisions = 0
+      self.avg_distance_episode = 0
       for step in range(self.config.max_ep_len):         
         if self.config.render:
           self.env.render()
@@ -116,26 +116,20 @@ class MultiAgentPG(object):
 
         # collect stats
         temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
-        episode_reward += temp # sum reward across agents to give episode reward
-        episode_collisions += count_agent_collisions(self.env)
-        avg_distance_episode += get_distance_from_landmarks(self.env)
+        self.episode_reward += temp # sum reward across agents to give episode reward
+        self.episode_collisions += count_agent_collisions(self.env)
+        self.avg_distance_episode += get_distance_from_landmarks(self.env)
 
         t += 1
         if (done_n[0] or step == self.config.max_ep_len - 1):
-          total_rewards.append(episode_reward)
-          collisions.append(episode_collisions)
-          agent_distance.append(avg_distance_episode/self.config.max_ep_len)
-          episode_reward = 0
-          episode_collisions = 0
-          avg_distance_episode = 0
           break
         if (not num_episodes) and t == self.config.batch_size:
           break
 
-      self.avg_reward = np.mean(total_rewards)
-      self.avg_collisions = np.mean(collisions)
-      self.avg_distance = np.mean(agent_distance)
-
+      self.total_rewards.append(self.episode_reward)
+      self.collisions.append(self.episode_collisions)
+      self.agent_distance.append(self.avg_distance_episode)
+        
       # form a path for each agent
       for i in range(self.env.n):
         path = {"observation": np.array(observations_n[i]),
@@ -150,6 +144,11 @@ class MultiAgentPG(object):
     return paths_n
 
   def evaluate(self, num_episodes = 1):
+    self.logger.info("Evaluating ...")
+    self.episode_reward = 0
+    self.episode_collisions = 0
+    self.avg_distance_episode = 0
+
     paths_n = self.sample_paths_n(num_episodes)
     rewards = [0] * num_episodes
     for i in range(self.env.n):
@@ -157,23 +156,35 @@ class MultiAgentPG(object):
       for eps_idx, path in enumerate(paths_for_agent):
         rewards[eps_idx] += np.sum(path["reward"])
 
-    avg_reward = np.mean(rewards)
-    sigma_reward = np.sqrt(np.var(rewards) / len(rewards))
-    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(avg_reward, sigma_reward)
+    self.avg_reward = np.mean(self.total_rewards)
+    self.avg_collisions = np.mean(self.collisions)
+    self.avg_distance = np.mean(self.agent_distance)
+    self.record_summary(self.current_batch_num)
+
+    sigma_reward = np.sqrt(np.var(self.total_rewards) / len(self.total_rewards))
+    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_reward, sigma_reward)
     self.logger.info(msg)
-    return avg_reward
+
+    sigma_collisions = np.sqrt(np.var(self.collisions) / len(self.collisions))
+    msg = "Average collisions: {:04.2f} +/- {:04.2f}".format(self.avg_collisions, sigma_collisions)
+    self.logger.info(msg)
+
+    sigma_distance = np.sqrt(np.var(self.agent_distance) / len(self.agent_distance))
+    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_distance, sigma_distance)
+    self.logger.info(msg)
 
   def train(self):
     for t in range(self.config.num_batches):
       self.logger.info("Batch " + str(t) + ":")
+      self.current_batch_num = t
       paths_n = self.sample_paths_n(num_episodes=self.config.batch_size_in_episodes)
       for i in range(self.env.n):
         self.logger.info("training for agent " + str(i) + "...")
         agent_net = self.agents[i]
         agent_net.train_for_batch_paths(paths_n[i])
 
-      if t % self.config.eval_freq == 0:
-        self.evaluate(self.config.batch_size_in_episodes)
+      #if t % self.config.eval_freq == 0:
+      self.evaluate(self.config.eval_freq)
 
     self.logger.info("- Training all done.")
 
