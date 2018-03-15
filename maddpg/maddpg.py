@@ -155,15 +155,13 @@ class MADDPG(object):
       if np.mean(rew_n) > -0.1:
         successes += 1
       
-      avg_distance_episode += get_distance_from_landmarks(self.env)
+      # distance of agents from landmarks are needed only at the end of an episode
+      avg_distance_episode = get_distance_from_landmarks(self.env)
 
       if (all(done_n) or episode_length >= self.config.max_ep_len):
-        # print(act_n)
-        # print(rew_n)
-        # end the existing episode
         total_rewards.append(episode_reward)
         collisions.append(episode_collisions)
-        agent_distance.append(avg_distance_episode/episode_length)
+        agent_distance.append(avg_distance_episode)
 
         episode_length = 0
         obs_n = self.env.reset()

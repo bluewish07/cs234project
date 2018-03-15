@@ -118,7 +118,7 @@ class MultiAgentPG(object):
         temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
         self.episode_reward += temp # sum reward across agents to give episode reward
         self.episode_collisions += count_agent_collisions(self.env)
-        self.avg_distance_episode += get_distance_from_landmarks(self.env)
+        self.avg_distance_episode = get_distance_from_landmarks(self.env)
 
         t += 1
         if (done_n[0] or step == self.config.max_ep_len - 1):
@@ -145,9 +145,6 @@ class MultiAgentPG(object):
 
   def evaluate(self, num_episodes = 1):
     self.logger.info("Evaluating ...")
-    self.episode_reward = 0
-    self.episode_collisions = 0
-    self.avg_distance_episode = 0
 
     paths_n = self.sample_paths_n(num_episodes)
     rewards = [0] * num_episodes
@@ -170,7 +167,7 @@ class MultiAgentPG(object):
     self.logger.info(msg)
 
     sigma_distance = np.sqrt(np.var(self.agent_distance) / len(self.agent_distance))
-    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_distance, sigma_distance)
+    msg = "Average distance: {:04.2f} +/- {:04.2f}".format(self.avg_distance, sigma_distance)
     self.logger.info(msg)
 
   def train(self):
