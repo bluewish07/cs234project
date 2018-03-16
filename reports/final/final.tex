@@ -56,11 +56,16 @@
 \icmlsetsymbol{equal}{*}
 
 \begin{icmlauthorlist}
-\icmlauthor{Diana Huang}{equal}
-\icmlauthor{Shalini Keshavamurthy}{equal}
-\icmlauthor{Nitin Viswanathan}{equal}
+\icmlauthor{Diana Huang}{ed}
+\icmlauthor{Shalini Keshavamurthy}{ed}
+\icmlauthor{Nitin Viswanathan}{ed}
 \end{icmlauthorlist}
 
+\icmlaffiliation{ed}{Stanford University, Palo Alto, USA}
+
+\icmlcorrespondingauthor{Diana Huang}{hxydiana@stanford.edu}
+\icmlcorrespondingauthor{Shalini Keshavamurthy}{skmurthy@stanford.edu}
+\icmlcorrespondingauthor{Nitin Viswanathan}{nviswana@stanford.edu}
 
 % You may provide any keywords that you
 % find helpful for describing your paper; these are used to populate
@@ -79,13 +84,12 @@
 % Remove it (just {}) if you do not need this facility.
 
 %\printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
-%\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
+\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
-\begin{comment}
 \begin{abstract}
-This document provides the current progress on our project.  
+Abstract goes here; 300 words max.
 \end{abstract}
-\end{comment}
+
 
 \section{Introduction}
 \label{submission}
@@ -94,7 +98,7 @@ There are many applications where multiple agents need to learn how to act toget
 
 Traditional reinforcement learning approaches focus on training a single agent and as a result, they do not work well on multi-agent problems because the environment for any single agent changes over time as other agents change their policies, leading to instability during training and high variance in results ~\cite{unstable}. Additionally, experience replay as used with Q-learning cannot be applied in multi-agent scenarios, significantly hampering stable learning.
 
-In addition to applying traditional approaches, prior work on multi-agent reinforcement learning (MARL) has attempted to develop new approaches specifically for multi-agent scenarios. In particular, recent work has achieved significantly improved results by modifying existing RL algorithms to train agents while incorporating information from the other agents, creating multi-agent deep deterministic policy gradients (MADDPG) \cite{maddpg}. However, one key limitation of MADDPG and other related approaches is that they do not generalize well to larger numbers of agents due to the growing computational complexity of incorporating information from all agents in training. Given the extensive training time necessary for even smaller scenarios, it is not feasible to retrain new networks for different possible numbers of agents.
+In addition to applying traditional approaches, prior work on multi-agent reinforcement learning (MARL) has attempted to develop new approaches specifically for multi-agent scenarios. In particular, recent work has achieved significantly improved results by modifying existing RL algorithms to train agents while incorporating information from the other agents, creating multi-agent deep deterministic policy gradients (MADDPG) \cite{maddpg}.
 
 We plan to develop a generalized training approach for multi-agent scenarios to find policies that scale well when applied in environments with varying numbers of agents. We do so by modifying the training process of MADDPG to train agents using only information from nearby agents instead of information from every agent, allowing agents to learn to make decisions based off of the location of a fixed number of nearby agents. As a baseline, we have implemented a REINFORCE policy gradient approach and will also re-implement MADDPG. We will compare these algorithms against our generalized algorithm to see how they perform in scenarios with various numbers of agents.
 
@@ -102,22 +106,6 @@ We plan to develop a generalized training approach for multi-agent scenarios to 
 All our read papers.
 
 \section{Approach}
-
-\subsection{REINFORCE - Policy Gradient Method}
-As an initial baseline, we have implemented the REINFORCE algorithm for multi-agent scenarios. With REINFORCE, every agent trains its own independent policy network based on its observation of the environment and the possible actions it can take. Even after applying a baseline and advantage normalization we did not expect REINFORCE to perform well due to the potential for very large variance in the gradient. From a single agent's perspective not only does the world change as other agents move, but the policies other agents follow change as well. Additionally, individual agents might not always get the correct gradient signal as an agent could take a good action but if other agents took bad actions, leading to overall decrease in reward, the gradient for the agent taking the correct action could still be negative. Nevertheless, REINFORCE serves as a baseline for comparing against more sophisticated approaches.
-
-\subsection{Multi-Agent Actor Critic Deep Deterministic Policy Gradient}
-We are currently in the process of re-creating MADDPG from ~\cite{maddpg} as a second baseline. MADDPG takes DDPG and tailors it to multi-agent scenarios, resulting in significantly better performance than single-agent methods such as REINFORCE and DDPG. MADDPG trains separate policy networks for every agent, but uses a centralized action-value function that incorporates information across all agents to ensure a more stable learning process. 
-
-Consider a game with $N$ agents, and let $\pi = \{\pi_1, ..., \pi_N\}$ be the associated set of agent policies that are parametrized by $\theta_1, ..., \theta_N$. The gradient update for MADDPG for agent $i$, $\nabla_{\theta_i} J(\theta_i)$, is:
-
-$$\nabla_{\theta_i}J(\theta_i) = \mathbb{E}_{s, a_i}[\nabla_{\theta_i}log \pi_i(a_i|o_i)Q^{\pi}_i(x, a_1, ..., a_N)]$$
-
-Where $o_i$ is the local observation of the environment by agent $i$, $x$ is the full state information across all agents, and $Q^{\pi}_i$ is a centralized action-value function that takes as input the actions of all agents. By incorporating the actions of all agents into the action-value function, instead of only each individual agent, MADDPG produces better and more stable results than traditional policy gradient or Q-learning approaches.
-
-After re-implementing MADDPG, we plan to modify the original MADDPG algorithm to train agents in a generalized way. More specifically, we will still maintain a centralized critic function for each agent, but instead of taking actions from all agents as input, only actions from neighboring agents would be considered. This is to make the number of parameters in the Q network constant, rather than linear to number of agents in the environment. Thus, the computational complexity for updating the Q network is also capped.
-
-\section{Experiments}
 
 \subsection{Environment}
 
@@ -138,8 +126,21 @@ We will evaluate our model performance during both train and test time. During t
 
 For our re-created version of MADDPG, we expect to match results from the original MADDPG paper as closely as possible when evaluating on up to 3 agents. For more than 3 agents, we will compare results from our re-created MADDPG and the modified, generalized version of MADDPG. We aim to have the modified MADDPG perform at least as well as the re-created MADDPG but train faster than the re-created MADDPG.
 
+\subsection{REINFORCE - Policy Gradient Method}
+As an initial baseline, we have implemented the REINFORCE algorithm for multi-agent scenarios. With REINFORCE, every agent trains its own independent policy network based on its observation of the environment and the possible actions it can take. Even after applying a baseline and advantage normalization we did not expect REINFORCE to perform well due to the potential for very large variance in the gradient. From a single agent's perspective not only does the world change as other agents move, but the policies other agents follow change as well. Additionally, individual agents might not always get the correct gradient signal as an agent could take a good action but if other agents took bad actions, leading to overall decrease in reward, the gradient for the agent taking the correct action could still be negative. Nevertheless, REINFORCE serves as a baseline for comparing against more sophisticated approaches.
 
-\subsection{Results}
+\subsection{Multi-Agent Actor Critic Deep Deterministic Policy Gradient}
+We are currently in the process of re-creating MADDPG from ~\cite{maddpg} as a second baseline. MADDPG takes DDPG and tailors it to multi-agent scenarios, resulting in significantly better performance than single-agent methods such as REINFORCE and DDPG. MADDPG trains separate policy networks for every agent, but uses a centralized action-value function that incorporates information across all agents to ensure a more stable learning process. 
+
+Consider a game with $N$ agents, and let $\pi = \{\pi_1, ..., \pi_N\}$ be the associated set of agent policies that are parametrized by $\theta_1, ..., \theta_N$. The gradient update for MADDPG for agent $i$, $\nabla_{\theta_i} J(\theta_i)$, is:
+
+$$\nabla_{\theta_i}J(\theta_i) = \mathbb{E}_{s, a_i}[\nabla_{\theta_i}log \pi_i(a_i|o_i)Q^{\pi}_i(x, a_1, ..., a_N)]$$
+
+Where $o_i$ is the local observation of the environment by agent $i$, $x$ is the full state information across all agents, and $Q^{\pi}_i$ is a centralized action-value function that takes as input the actions of all agents. By incorporating the actions of all agents into the action-value function, instead of only each individual agent, MADDPG produces better and more stable results than traditional policy gradient or Q-learning approaches.
+
+After re-implementing MADDPG, we plan to modify the original MADDPG algorithm to train agents in a generalized way. More specifically, we will still maintain a centralized critic function for each agent, but instead of taking actions from all agents as input, only actions from neighboring agents would be considered. This is to make the number of parameters in the Q network constant, rather than linear to number of agents in the environment. Thus, the computational complexity for updating the Q network is also capped.
+
+\section{Experiments}
 
 \begin{figure}
 \centering
@@ -165,6 +166,10 @@ For our re-created version of MADDPG, we expect to match results from the origin
 Figures ~\ref{fig:pg_1_16_gamma1}, ~\ref{fig:pg_1_32_gamma95}  and ~\ref{fig:pg_2_128_gamma1} show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
 
 \section{Conclusion}
+
+\section{Future Work}
+
+\section*{Contributions}
 
 
 \bibliography{milestone}
