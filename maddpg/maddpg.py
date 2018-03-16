@@ -207,8 +207,7 @@ class MADDPG(object):
         agent_net = self.agent_networks[i]
         agent_net.train_for_batch_samples(samples, agents_list=self.agent_networks)
       
-      # NV: every batch, do a test_run and print average reward)
-      # change this if we want to sample more often
+      # periodically do a test run to evaluate policies so far
       if t % self.config.eval_freq == 0:
         self.logger.info("Batch " + str(t) + ":")
         self.test_run(self.env, self.config.eval_episodes)
