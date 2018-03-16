@@ -119,13 +119,10 @@ class MADDPG(object):
     """
     j = 0
     total_rewards = []
-    episode_reward = 0
     collisions = []
-    episode_collisions = 0
+    agent_distance = []
     successes = 0
 
-    agent_distance = []
-    avg_distance_episode = 0
     obs_n = self.env.reset()
     episode_length = 0
     
@@ -134,49 +131,48 @@ class MADDPG(object):
         time.sleep(0.1)
         self.env.render()
 
-      act_n = []  # list of n actions for this step
-      for i in range(env.n):
+      # initialize metrics before start of an episode
+      episode_reward = 0
+      episode_collisions = 0
+      avg_distance_episode = 0
+      
+      #reset observation after every episode
+      obs_n = self.env.reset()
+      for i in range(self.config.max_ep_len):
+        act_n = []  # list of n actions for this step
+
+        for i in range(env.n):
           obs = obs_n[i]
           act = self.agent_networks[i].get_sampled_action(obs, is_evaluation=True)
           act_n.append(act)
 
-      obs_n, rew_n, done_n, info_n = env.step(act_n)
-      episode_length += 1
-      #print(act_n)
-      #print(rew_n)
-      temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
-      episode_reward += temp # sum reward across agents to give episode reward
+        obs_n, rew_n, done_n, info_n = env.step(act_n)
+        #episode_length += 1
+        temp = np.sum(np.clip(rew_n, -1e10, 1e10)) # for numerical stability
+        episode_reward += temp # sum reward across agents to give episode reward
       
-      episode_collisions += count_agent_collisions(self.env)
+        episode_collisions += count_agent_collisions(self.env)
       
-      # define a "successful" episode as one where every agent has a reward > -0.1
-      # this definition comes from the benchmark_data function in multi-agent-envs simple_spread.py definition 
-      # reward = -1 * distance from agent to a landmark
-      if np.mean(rew_n) > -0.1:
-        successes += 1
+        # define a "successful" episode as one where every agent has a reward > -0.1
+        # this definition comes from the benchmark_data function in multi-agent-envs simple_spread.py definition 
+        # reward = -1 * distance from agent to a landmark
+        if np.mean(rew_n) > -0.1:
+          successes += 1
       
-      # distance of agents from landmarks are needed only at the end of an episode
-      avg_distance_episode = get_distance_from_landmarks(self.env)
+        # distance of agents from landmarks are needed only at the end of an episode
+        avg_distance_episode += get_distance_from_landmarks(self.env)
 
-      if (all(done_n) or episode_length >= self.config.max_ep_len):
         total_rewards.append(episode_reward)
         collisions.append(episode_collisions)
         agent_distance.append(avg_distance_episode)
 
-        episode_length = 0
-        obs_n = self.env.reset()
-
-        j += 1
-        
-        episode_reward = 0
-        episode_collisions = 0
-        avg_distance_episode = 0
-        
+      #increment episode counter 
+      j += 1
         
     # log average episode reward
     self.avg_reward = np.mean(total_rewards)
     sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
-    msg = "Evaluating...Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_reward, sigma_reward)
+    msg = "Average reward: {:04.2f} +/- {:04.2f}".format(self.avg_reward, sigma_reward)
     self.logger.info(msg)
     
     # log # of collisions
@@ -211,9 +207,6 @@ class MADDPG(object):
         agent_net = self.agent_networks[i]
         agent_net.train_for_batch_samples(samples, agents_list=self.agent_networks)
       
-      #if(t % self.config.summary_freq == 0):
-      #  self.record_summary(t)
- 
       # NV: every batch, do a test_run and print average reward)
       # change this if we want to sample more often
       if t % self.config.eval_freq == 0:
