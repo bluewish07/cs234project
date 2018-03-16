@@ -159,7 +159,6 @@ class MADDPG(object):
         if np.mean(rew_n) > -0.1:
           successes += 1
       
-        # distance of agents from landmarks are needed only at the end of an episode
         avg_distance_episode += get_distance_from_landmarks(self.env)
 
       total_rewards.append(episode_reward)
