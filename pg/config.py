@@ -17,7 +17,7 @@ class config():
     summary_freq = 1
 
     eval_freq = 250  # every eval_freq batches, evaluate
-    eval_episodes = 10  # number of episodes to do an evaluation run on
+    eval_episodes = 40  # number of episodes to do an evaluation run on
 
     
     # model and training config
