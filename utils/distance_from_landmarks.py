@@ -8,5 +8,5 @@ def get_distance_from_landmarks(env):
     for l in world.landmarks:
       dist.append( np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos))) )
     dists.append(np.min(dist))  
-  return np.mean(dists)/env.n
+  return np.mean(dists)
 
