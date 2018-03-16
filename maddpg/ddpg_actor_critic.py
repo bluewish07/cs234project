@@ -85,31 +85,23 @@ class DDPGActorCritic(object):
         Build one network per other agent to estimate what the other agents would do
         :return: None
         """
-        policy_approximates = []
-        logprobs = []
-        log_stds = []
+        policy_approximate_logits = []
+        policy_approximate_actions = []
         with tf.variable_scope(self.policy_approx_networks_scope):
             for i in range(self.env.n):
                 if i == self.agent_idx:
-                    policy_approximates.append(None)
-                    log_stds.append(None)
-                    logprobs.append(None)
+                    policy_approximate_logits.append(None)
+                    policy_approximate_actions.append(None)
                     continue
                 scope = "agent_" + str(i)
-                approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
-                                                       self.config.layer_size, output_activation=tf.nn.softmax)
-                # approx = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
-                #                    self.config.layer_size, output_activation=None)
-                # logprobs.append(tf.nn.softmax(approx, axis=-1))
-                policy_approximates.append(approx)
-                with tf.variable_scope(scope):
-                    log_std = tf.get_variable("log_std", shape=[self.action_dim], dtype=tf.float32)
-                    log_stds.append(log_std)
+                logits = build_mlp(self.observation_placeholder, self.action_dim, scope, self.config.n_layers,
+                                   self.config.layer_size, output_activation=None)
+                policy_approximate_logits.append(logits)
+                policy_approximate_actions.append(tf.nn.softmax(logits, axis=-1))
 
-        logprobs = policy_approximates
-        self.policy_approximates = policy_approximates
-        self.policy_approximates_log_probs = logprobs
-        self.policy_approx_log_stds = log_stds
+        self.policy_approximate_logits = policy_approximate_logits
+        self.policy_approximate_actions = policy_approximate_actions
+
 
     def add_update_policy_approx_networks_op(self):
         """
@@ -125,15 +117,16 @@ class DDPGActorCritic(object):
             if i == self.agent_idx:
                 update_ops.append(None)
                 continue
-            log_std = self.policy_approx_log_stds[i]
-            #TODO later: we can try other distributions as well?
-            prob = self.policy_approximates_log_probs[i]
-            logits = self.policy_approximates[i]
-            action_logits = tf.nn.softmax(self.action_placeholder)
-            logprob = -tf.nn.softmax_cross_entropy_with_logits(labels=action_logits, logits=logits)
-            dist = tf.contrib.distributions.Categorical(probs=prob)
+
+            approx_logits = self.policy_approximate_logits[i]
+            action_labels = self.action_placeholder
+            if self.config.random_process_exploration > 0:
+                # needed for o-u and dist. sampling because they may not produce a valid prob. dist. for the action
+                action_labels = tf.nn.softmax(self.action_placeholder)
+
+            logprob = -tf.nn.softmax_cross_entropy_with_logits(labels=action_labels, logits=approx_logits)
+            dist = tf.contrib.distributions.Categorical(logits=approx_logits)
             logits_entropy = dist.entropy()
-            #logits_entropy = entropy(logits)
             loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * logits_entropy)
             self.policy_approx_networks_losses[i] = tf.Print(loss, [loss], message="agent_"+str(i)+" loss:")
             optimizer = tf.train.AdamOptimizer(self.lr)
@@ -142,9 +135,12 @@ class DDPGActorCritic(object):
             grads_vars = optimizer.compute_gradients(loss, var_list=vars_in_scope)
             grad_norm = tf.global_norm([grad for (grad, _) in grads_vars])
             self.policy_approx_grad_norms[i] = tf.Print(grad_norm, [grad_norm], message="agent_"+str(i)+" grad norm:")
+            if self.config.grad_clip:
+                variables = [v for g, v in grads_vars]
+                clipped = [tf.clip_by_norm(g, self.config.clip_val) for g, v in grads_vars]
+                grads_vars = zip(clipped, variables)
             update = optimizer.apply_gradients(grads_vars)
 
-            # update = tf.train.AdamOptimizer(self.lr).minimize(loss)
             update_ops.append(update)
 
         self.update_policy_approx_networks_op = update_ops
@@ -380,7 +376,7 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.debug_logging: ops_to_run += [loss, grad_norm]
+            if self.config.debug_logging or self.config.approx_debugging: ops_to_run += [loss, grad_norm]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
@@ -408,12 +404,20 @@ class DDPGActorCritic(object):
                 next_actions_i = self.sess.run(self.target_mu_noise, feed_dict={self.observation_placeholder: next_observations_i})
             else:
                 if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
-                  next_actions_i = self.sess.run(self.policy_approximates_log_probs[i],
+                    next_actions_i = self.sess.run(self.policy_approximate_actions[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
+                    # if self.config.approx_debugging:
+                    #     other = agents_list[i]
+                    #     true_next = other.sess.run(other.target_mu_noise,
+                    #                      feed_dict={other.observation_placeholder: next_observations_i})
+                    #     print("prediction:")
+                    #     print(next_actions_i)
+                    #     print("real")
+                    #     print(true_next)
                 else:
-                  # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
-                  other = agents_list[i]
-                  next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
+                    # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
+                    other = agents_list[i]
+                    next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
                   
             est_next_actions_by_agent.append(next_actions_i)
         est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)

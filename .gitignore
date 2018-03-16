@@ -1,6 +1,7 @@
 *.egg-info/
 *.pyc
-*/*.pyc
+pg/*.pyc
+maddpg/*.pyc
 *.DS_Store
 gym/
 .idea/
