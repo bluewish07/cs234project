@@ -162,9 +162,9 @@ class MADDPG(object):
         # distance of agents from landmarks are needed only at the end of an episode
         avg_distance_episode += get_distance_from_landmarks(self.env)
 
-        total_rewards.append(episode_reward)
-        collisions.append(episode_collisions)
-        agent_distance.append(avg_distance_episode)
+      total_rewards.append(episode_reward)
+      collisions.append(episode_collisions)
+      agent_distance.append(avg_distance_episode)
 
       #increment episode counter 
       j += 1
