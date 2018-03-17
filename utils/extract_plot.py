@@ -1,4 +1,4 @@
-import os
+import string
 import sys
 import matplotlib.pyplot as plt
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
             x.append(fields[0])
             y.append(fields[1])
         parsed_file.close()
-        label = parsed.split(".")[0].split("_")[1]
+        label = string.join(parsed.split(".")[0].split("_")[1:], " ")
         plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=label, linewidth=2, markersize=3)
         plt.legend(loc="lower right")
 
