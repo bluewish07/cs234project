@@ -45,7 +45,9 @@ if __name__ == '__main__':
             x.append(fields[0])
             y.append(fields[1])
         parsed_file.close()
-        plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=filename, linewidth=2, markersize=3)
+        label = parsed.split(".")[0].split("_")[1]
+        plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=label, linewidth=2, markersize=3)
+        plt.legend(loc="lower right")
 
     # minx = 0
     # maxx = 200
@@ -55,6 +57,6 @@ if __name__ == '__main__':
     # plt.gca().invert_yaxis()
     plt.xlabel('Batch number')
     plt.ylabel('Average reward')
-    plt.title('Multiagent simple_spread training with PG with 1 layer and 16 hidden units')
+    #plt.title('Multiagent simple_spread training with PG with 1 layer and 16 hidden units')
     # plt.axis([minx,maxx,miny,maxy])
     plt.show()
