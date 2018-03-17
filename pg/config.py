@@ -17,14 +17,14 @@ class config():
     summary_freq = 1
 
     eval_freq = 250  # every eval_freq batches, evaluate
+    eval_episodes = 40  # number of episodes to do an evaluation run on
 
     
     # model and training config
-    num_batches = 15000 # number of batches trained on
-    batch_size = 1024 # unused
-    batch_size_in_episodes = 1024 # number of episodes used to compute each policy update
+    num_batches = 60000 # number of batches trained on
+    # batch_size = 1024 # unused
+    batch_size_in_episodes = 50 # number of episodes used to compute each policy update
     max_ep_len = 25 # maximum episode length
-    batch_size = 1024 # number of steps used to compute each policy update
     learning_rate = 1e-2
     gamma         = .95 # the discount factor
     use_baseline = True 
@@ -32,8 +32,3 @@ class config():
     # parameters for the policy and baseline models
     n_layers = 2
     layer_size = 128
-
-
-    # since we start new episodes for each batch
-    assert max_ep_len <= batch_size
-    if max_ep_len < 0: max_ep_len = batch_size
