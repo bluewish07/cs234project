@@ -43,10 +43,6 @@ class DDPGActorCritic(object):
         # however, for senarios with communication channels, we will need to re-look at this
         #  as action_space seems to be a tuple of movement space and comm space
         self.action_dim = self.env.action_space[0].n
-
-        # observation space for a given agent - is Box(18) for simple_spread
-        # NOTE: assumes that all agents have the same observation space for now
-        # TODO: observation_dim as a argument to this function, so it can vary by agent
         self.observation_dim = self.env.observation_space[0].shape[0]
 
         self.lr = self.config.learning_rate
@@ -66,6 +62,12 @@ class DDPGActorCritic(object):
             x0=None)
 
         self.t = 0
+        
+        # define the # of agents to store in the critic network
+        if (self.config.neighbors_critic):
+          self.critic_size = self.config.critic_size
+        else:
+          self.critic_size = self.env.n
 
 
         ############### Building the model graph ####################
@@ -76,7 +78,9 @@ class DDPGActorCritic(object):
         self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
-
+        
+        if (self.config.neighbors_critic):
+          self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.observation_dim))
 
 
     ### actor networks for simulating other agents
@@ -153,7 +157,7 @@ class DDPGActorCritic(object):
     ### critic network
     def add_critic_network_placeholders_op(self):
         with tf.variable_scope(self.critic_network_scope):
-            self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.action_dim))
+            self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.action_dim))
             self.q_next_placeholder = tf.placeholder(tf.float32, shape=(None))
             self.done_mask_placeholder = tf.placeholder(tf.bool, shape=[None])
 
@@ -397,6 +401,17 @@ class DDPGActorCritic(object):
             print("state: ")
             print(state)
 
+        # determine the closest agents (including self) so we can update the critic with them
+        if self.config.neighbors_critic:
+          this_agent = self.env.world.agents[self.agent_idx]
+          dists = []
+          for i in range (self.env.n):
+            other_agent = self.env.world.agents[i]
+            dist = np.sum(np.square(this_agent.state.p_pos - other_agent.state.p_pos))
+            dists.append(dist)
+          dists = np.array(dists)
+          closest_agents = dists.argsort()[:self.critic_size]
+          
         # get the next estimated action from each agent approx network given next observation
         # Specifically, for the current agent, get the next action from the target policy network
         # for all other agents, get the action from the approx network
@@ -411,11 +426,12 @@ class DDPGActorCritic(object):
                   next_actions_i = self.sess.run(self.policy_approximates_log_probs[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
                 else:
-                  # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
                   other = agents_list[i]
                   next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
                   
-            est_next_actions_by_agent.append(next_actions_i)
+            if (self.config.neighbors_critic and i in closest_agents) or (not self.config.neighbors_critic):
+              est_next_actions_by_agent.append(next_actions_i)
+              
         est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
             
         q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
