@@ -24,7 +24,7 @@ class config():
     discrete = False # if True, we use a single number to represent an action; else we use a vector of length action_dim
     num_batches = 60000 # number of batches trained on
     max_ep_len = 25  # maximum episode length
-    batch_size = 1024 * max_ep_len  #1024 episodes = 1024*25 iterations/samples
+    batch_size = 50 * max_ep_len  #1024 episodes = 1024*25 iterations/samples
     train_freq = 100  # do a training step after every train_freq samples added to replay buffer
     eval_freq = 250  # every eval_freq batches, evaluate
     eval_episodes = 40  # number of episodes to do an evaluation run on
