@@ -376,7 +376,7 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.debug_logging or self.config.approx_debugging: ops_to_run += [loss, grad_norm]
+            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss, grad_norm]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
@@ -406,14 +406,14 @@ class DDPGActorCritic(object):
                 if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
                     next_actions_i = self.sess.run(self.policy_approximate_actions[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
-                    # if self.config.approx_debugging:
-                    #     other = agents_list[i]
-                    #     true_next = other.sess.run(other.target_mu_noise,
-                    #                      feed_dict={other.observation_placeholder: next_observations_i})
-                    #     print("prediction:")
-                    #     print(next_actions_i)
-                    #     print("real")
-                    #     print(true_next)
+                    if self.config.approx_debugging and self.t % (self.config.eval_freq * 5) == 0:
+                        other = agents_list[i]
+                        true_next = other.sess.run(other.target_mu_noise,
+                                         feed_dict={other.observation_placeholder: next_observations_i})
+                        print("prediction:")
+                        print(next_actions_i)
+                        print("real")
+                        print(true_next)
                 else:
                     # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
                     other = agents_list[i]
