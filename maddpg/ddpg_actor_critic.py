@@ -43,10 +43,6 @@ class DDPGActorCritic(object):
         # however, for senarios with communication channels, we will need to re-look at this
         #  as action_space seems to be a tuple of movement space and comm space
         self.action_dim = self.env.action_space[0].n
-
-        # observation space for a given agent - is Box(18) for simple_spread
-        # NOTE: assumes that all agents have the same observation space for now
-        # TODO: observation_dim as a argument to this function, so it can vary by agent
         self.observation_dim = self.env.observation_space[0].shape[0]
 
         self.lr = self.config.learning_rate
@@ -66,18 +62,22 @@ class DDPGActorCritic(object):
             x0=None)
 
         self.t = 0
+        
+        # define the # of agents to store in the critic network
+        if (self.config.neighbors_critic):
+          self.critic_size = self.config.critic_size
+        else:
+          self.critic_size = self.env.n
 
 
         ############### Building the model graph ####################
     ### shared placeholders
     def add_placeholders_op(self):
-        self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
+        self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.observation_dim))
         self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
         self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
-
-
 
     ### actor networks for simulating other agents
     def build_policy_approx_networks(self):
@@ -149,7 +149,7 @@ class DDPGActorCritic(object):
     ### critic network
     def add_critic_network_placeholders_op(self):
         with tf.variable_scope(self.critic_network_scope):
-            self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.action_dim))
+            self.actions_n_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.action_dim))
             self.q_next_placeholder = tf.placeholder(tf.float32, shape=(None))
             self.done_mask_placeholder = tf.placeholder(tf.bool, shape=[None])
 
@@ -229,13 +229,19 @@ class DDPGActorCritic(object):
 
 
     def add_actor_loss_op(self):
-        slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
-        slice_2 = tf.slice(self.actions_n_placeholder, [0, self.agent_idx+1, 0], [self.config.batch_size, self.env.n - self.agent_idx - 1, self.action_dim])
+        # if we're using neighbors, this agent is listed as the first agent in actions_n_placeholder
+        if (self.config.neighbors_critic):
+          slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, 0, self.action_dim])
+          slice_2 = tf.slice(self.actions_n_placeholder, [0, 1, 0], [self.config.batch_size, self.critic_size - 1, self.action_dim])
+        else:
+          slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
+          slice_2 = tf.slice(self.actions_n_placeholder, [0, self.agent_idx+1, 0], [self.config.batch_size, self.critic_size - self.agent_idx - 1, self.action_dim])
+            
+        
         action_logits = tf.expand_dims(self.mu_noise, axis=1)
         actions_n = tf.concat([slice_1, action_logits, slice_2], axis=1)
         input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(actions_n)],
                           axis=1)
-
         combined_q_scope = self.critic_network_scope + "/" + self.q_scope
         self.q_reuse = build_mlp(input, 1, combined_q_scope, self.config.n_layers, self.config.layer_size)
 
@@ -376,11 +382,63 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.debug_logging or self.config.approx_debugging: ops_to_run += [loss, grad_norm]
+            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss, grad_norm]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
 
+    def neighbors_batch(self, state, state_next, true_actions, est_next_actions):
+      """
+      Input:
+      state: (batch_size, num_agent, obs_dim)
+      next_state: (batch_size, num_agent, obs_dim)
+      true_actions: (batch_size, num_agents, action_dim)
+      est_next_actions: (batch_size, num_agents, action_dim)
+      
+      Output:
+      state_out: (batch_size, agent (self + neighbors), obs_dim)
+      next_state_out: (batch_size, agent (self + neighbors), obs_dim)
+      
+      in both state_out and next_state_out, the first agent will always be self (i.e. ths agent)
+      """
+      
+      state_out = []
+      state_next_out = []
+      actions_out = []
+      est_next_a_out = []
+      
+      # NV TODO this should be vectorized so it runs faster - don't loop over everything
+      for i in range(self.config.batch_size):
+        dists_obs = []
+        dists_next = []
+        this_pos = state[i, self.agent_idx, 2:4]
+        this_pos_next = state_next[i, self.agent_idx, 2:4]
+        for j in range (self.env.n):
+          other_pos = state[i, j, 2:4]
+          other_pos_next = state_next[i, j, 2:4]
+          dist_obs = np.sum(np.square(this_pos - other_pos))
+          dist_next = np.sum(np.square(this_pos_next - other_pos_next))
+          dists_obs.append(dist_obs)
+          dists_next.append(dist_next)
+        dists_obs = np.array(dists_obs)
+        dists_next = np.array(dists_next)
+        idx_obs = dists_obs.argsort()[:self.critic_size]
+        idx_next = dists_next.argsort()[:self.critic_size]
+          
+        timestep = [state[i, j, :] for j in idx_obs]
+        action = [true_actions[i, j, :] for j in idx_obs]
+        timestep_next = [state_next[i, j, :] for j in idx_next]
+        est_next_a = [est_next_actions[i,j,:] for j in idx_next]
+          
+        state_out.append(timestep)
+        actions_out.append(action)
+        state_next_out.append(timestep_next)
+        est_next_a_out.append(est_next_a)
+        
+                    
+      return (state_out, state_next_out, actions_out, est_next_a_out)
+      
+    
     def update_critic_network(self, state, true_actions, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask, agents_list=None):
         """
         Update the critic network
@@ -392,7 +450,7 @@ class DDPGActorCritic(object):
         if self.config.debug_logging:
             print("state: ")
             print(state)
-
+          
         # get the next estimated action from each agent approx network given next observation
         # Specifically, for the current agent, get the next action from the target policy network
         # for all other agents, get the action from the approx network
@@ -406,21 +464,25 @@ class DDPGActorCritic(object):
                 if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
                     next_actions_i = self.sess.run(self.policy_approximate_actions[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
-                    # if self.config.approx_debugging:
-                    #     other = agents_list[i]
-                    #     true_next = other.sess.run(other.target_mu_noise,
-                    #                      feed_dict={other.observation_placeholder: next_observations_i})
-                    #     print("prediction:")
-                    #     print(next_actions_i)
-                    #     print("real")
-                    #     print(true_next)
+                    if self.config.approx_debugging and self.t % (self.config.eval_freq * 5) == 0:
+                        other = agents_list[i]
+                        true_next = other.sess.run(other.target_mu_noise,
+                                         feed_dict={other.observation_placeholder: next_observations_i})
+                        print("prediction:")
+                        print(next_actions_i)
+                        print("real")
+                        print(true_next)
                 else:
-                    # NV TODO: Should we take the mean, or should we use get_sampled_action() instead
                     other = agents_list[i]
                     next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
                   
             est_next_actions_by_agent.append(next_actions_i)
+          
         est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
+        
+        # if only looking at nearest neighbors, update all of the values used in the calculations
+        if self.config.neighbors_critic:
+          state, next_state, true_actions, est_next_actions = self.neighbors_batch(state, next_state, true_actions, est_next_actions)
             
         q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
                                                          self.actions_n_placeholder : est_next_actions})
@@ -454,7 +516,12 @@ class DDPGActorCritic(object):
         """
 
         # self.sess.run(self.copy_q_op, feed_dict={})
-
+        
+        # NV TODO - this is implemented poorly - call neighbors_batch here and in the critic update...
+        # can we do this more efficiently??
+        if self.config.neighbors_critic:
+          state, _, actions_n, _ = self.neighbors_batch(state, state, actions_n, actions_n)
+        
         ops_to_run = [self.train_actor_op]
         if self.config.use_batch_normalization:
             scope = self.agent_scope + "/" + self.actor_network_scope
@@ -482,7 +549,7 @@ class DDPGActorCritic(object):
     #         actions = tf.one_hot(action_indices, self.action_dim)
     #     return actions, action_logits
     
-    def get_sampled_action(self, observation, is_evaluation=False):
+    def get_sampled_action(self, observation, is_evaluation=False, timestep=None):
         """
         Get a single action for a single observation, used for stepping the environment
 
@@ -502,6 +569,16 @@ class DDPGActorCritic(object):
             action = action_batched[0]
             return action
 
+        if self.config.exploration_logging and self.t % self.config.eval_freq == 0:
+            action_pre_batched, action_post_batched = self.sess.run([self.mu_normalized, self.mu_noise], feed_dict={self.observation_placeholder: batch})
+            action_pre = action_pre_batched[0]
+            action_post = action_post_batched[0]
+            if self.config.random_process_exploration == 1:  # ornstein-uhlenbeck
+                action_post = action_post + self.noise()
+            dist = self.calculate_action_difference(action_pre, action_post)
+            print("action distance: "+str(timestep))
+            print(dist)
+            return action_post
 
         action_batched = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: batch})
         action = action_batched[0]
@@ -509,6 +586,18 @@ class DDPGActorCritic(object):
             action = action + self.noise()
 
         return action
+
+    def calculate_action_difference(self, action1, action2):
+        """
+        Calculate the euclidean distance of two actions' effective moves
+        :param action1:
+        :param action2:
+        :return: scalar, euclidean distance
+        """
+        effective_action1 = [action1[1] - action1[2], action1[3] - action1[4]]
+        effective_action2 = [action2[1] - action2[2], action2[3] - action2[4]]
+        dist = math.sqrt(math.pow(effective_action1[0] - effective_action2[0], 2) + math.pow(effective_action1[1] - effective_action2[1], 2))
+        return dist
 
 
     def train_for_batch_samples(self, samples, agents_list=None):
@@ -524,10 +613,10 @@ class DDPGActorCritic(object):
 
         state, true_actions, rewards, next_state, done_mask = samples
         # update this agent's policy approx networks for other agents
-        observations_by_agent = np.swapaxes(state, 0, 1) # shape (num_agent, batch_size, observation_dim)
-        true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
-        rewards_by_agent = np.swapaxes(rewards, 0, 1)
-        next_observations_by_agent = np.swapaxes(next_state, 0, 1)
+        observations_by_agent = np.swapaxes(state, 0, 1) #  (num_agent, batch_size, observation_dim)
+        true_actions_by_agent = np.swapaxes(true_actions, 0, 1) # (num_agent, batch_size, action_sim)
+        rewards_by_agent = np.swapaxes(rewards, 0, 1) # (num_agent, batch_size, reward)
+        next_observations_by_agent = np.swapaxes(next_state, 0, 1) #  (num_agent, batch_size, observation_dim)
         observation_for_current_agent = observations_by_agent[self.agent_idx]
         reward_for_current_agent = rewards_by_agent[self.agent_idx]
         
