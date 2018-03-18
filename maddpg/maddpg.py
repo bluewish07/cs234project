@@ -85,7 +85,7 @@ class MADDPG(object):
       act_n = []  # list of n actions for this step
       for i in range(env.n):
           obs = obs_n[i]
-          act = self.agent_networks[i].get_sampled_action(obs)
+          act = self.agent_networks[i].get_sampled_action(obs, timestep=t)
           if self.config.action_clip:
             act = np.clip(act, -2, 2)
           act_n.append(act)

@@ -382,7 +382,7 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.debug_logging or self.config.approx_debugging: ops_to_run += [loss, grad_norm]
+            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss, grad_norm]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
@@ -464,14 +464,14 @@ class DDPGActorCritic(object):
                 if not self.config.use_true_actions: # use approximate policy networks instead of the true action another agent would take
                     next_actions_i = self.sess.run(self.policy_approximate_actions[i],
                                                feed_dict={self.observation_placeholder: next_observations_i})
-                    # if self.config.approx_debugging:
-                    #     other = agents_list[i]
-                    #     true_next = other.sess.run(other.target_mu_noise,
-                    #                      feed_dict={other.observation_placeholder: next_observations_i})
-                    #     print("prediction:")
-                    #     print(next_actions_i)
-                    #     print("real")
-                    #     print(true_next)
+                    if self.config.approx_debugging and self.t % (self.config.eval_freq * 5) == 0:
+                        other = agents_list[i]
+                        true_next = other.sess.run(other.target_mu_noise,
+                                         feed_dict={other.observation_placeholder: next_observations_i})
+                        print("prediction:")
+                        print(next_actions_i)
+                        print("real")
+                        print(true_next)
                 else:
                     other = agents_list[i]
                     next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
@@ -549,7 +549,7 @@ class DDPGActorCritic(object):
     #         actions = tf.one_hot(action_indices, self.action_dim)
     #     return actions, action_logits
     
-    def get_sampled_action(self, observation, is_evaluation=False):
+    def get_sampled_action(self, observation, is_evaluation=False, timestep=None):
         """
         Get a single action for a single observation, used for stepping the environment
 
@@ -569,6 +569,16 @@ class DDPGActorCritic(object):
             action = action_batched[0]
             return action
 
+        if self.config.exploration_logging and self.t % self.config.eval_freq == 0:
+            action_pre_batched, action_post_batched = self.sess.run([self.mu_normalized, self.mu_noise], feed_dict={self.observation_placeholder: batch})
+            action_pre = action_pre_batched[0]
+            action_post = action_post_batched[0]
+            if self.config.random_process_exploration == 1:  # ornstein-uhlenbeck
+                action_post = action_post + self.noise()
+            dist = self.calculate_action_difference(action_pre, action_post)
+            print("action distance: "+str(timestep))
+            print(dist)
+            return action_post
 
         action_batched = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: batch})
         action = action_batched[0]
@@ -576,6 +586,18 @@ class DDPGActorCritic(object):
             action = action + self.noise()
 
         return action
+
+    def calculate_action_difference(self, action1, action2):
+        """
+        Calculate the euclidean distance of two actions' effective moves
+        :param action1:
+        :param action2:
+        :return: scalar, euclidean distance
+        """
+        effective_action1 = [action1[1] - action1[2], action1[3] - action1[4]]
+        effective_action2 = [action2[1] - action2[2], action2[3] - action2[4]]
+        dist = math.sqrt(math.pow(effective_action1[0] - effective_action2[0], 2) + math.pow(effective_action1[1] - effective_action2[1], 2))
+        return dist
 
 
     def train_for_batch_samples(self, samples, agents_list=None):
