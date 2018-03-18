@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.5.13)  16 MAR 2018 03:58
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.5.13)  18 MAR 2018 14:15
 entering extended mode
 **./final.tex
 (final.tex
@@ -495,66 +495,48 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 89.
 
 
-Package natbib Warning: Citation `multigames' on page 1 undefined on input line 97.
+Package natbib Warning: Citation `multigames' on page 1 undefined on input line 99.
 
 
-Package natbib Warning: Citation `multirobot' on page 1 undefined on input line 97.
+Package natbib Warning: Citation `multirobot' on page 1 undefined on input line 99.
 
 
-Package natbib Warning: Citation `communication' on page 1 undefined on input line 97.
+Package natbib Warning: Citation `communication' on page 1 undefined on input line 99.
 
 
-Package natbib Warning: Citation `selfplay' on page 1 undefined on input line 97.
+Package natbib Warning: Citation `selfplay' on page 1 undefined on input line 99.
 
 
-Package natbib Warning: Citation `unstable' on page 1 undefined on input line 99.
+Package natbib Warning: Citation `unstable' on page 1 undefined on input line 101.
 
 
-Package natbib Warning: Citation `maddpg' on page 1 undefined on input line 101.
+Package natbib Warning: Citation `maddpg' on page 1 undefined on input line 103.
 
 
-Package natbib Warning: Citation `openaigym' on page 1 undefined on input line 112.
-
-<images/env-image.png, id=3, 703.62875pt x 702.625pt>
-File: images/env-image.png Graphic file (type png)
- <use images/env-image.png>
-Package pdftex.def Info: images/env-image.png used on input line 116.
-(pdftex.def)             Requested size: 105.53975pt x 105.38919pt.
- [1{C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}
-
-
-
-pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) has been already used, duplicate ignored
-
-\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
-                                                  \fi \fi 
-l.122 
-       <./images/env-image.png>]
-
-Package natbib Warning: Citation `maddpg' on page 2 undefined on input line 133.
+Package natbib Warning: Citation `openaigym' on page 1 undefined on input line 118.
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [1{C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}
 
-<images/pg_1_16_gamma1.png, id=20, 586.8324pt x 442.2924pt>
-File: images/pg_1_16_gamma1.png Graphic file (type png)
- <use images/pg_1_16_gamma1.png>
-Package pdftex.def Info: images/pg_1_16_gamma1.png used on input line 147.
-(pdftex.def)             Requested size: 146.70773pt x 110.57283pt.
 
-<images/pg_1_32_gamma95.png, id=21, 586.8324pt x 442.2924pt>
-File: images/pg_1_32_gamma95.png Graphic file (type png)
- <use images/pg_1_32_gamma95.png>
-Package pdftex.def Info: images/pg_1_32_gamma95.png used on input line 154.
-(pdftex.def)             Requested size: 146.70773pt x 110.57283pt.
 
-<images/pg_2_128_gamma1.png, id=22, 586.8324pt x 442.2924pt>
-File: images/pg_2_128_gamma1.png Graphic file (type png)
- <use images/pg_2_128_gamma1.png>
-Package pdftex.def Info: images/pg_2_128_gamma1.png used on input line 161.
-(pdftex.def)             Requested size: 146.70773pt x 110.57283pt.
- [2] (final.bbl
+] <images/env-image.png, id=19, 418.56375pt x 235.63031pt>
+File: images/env-image.png Graphic file (type png)
+ <use images/env-image.png>
+Package pdftex.def Info: images/env-image.png used on input line 126.
+(pdftex.def)             Requested size: 209.28136pt x 117.81487pt.
+
+
+Package natbib Warning: Citation `maddpg' on page 2 undefined on input line 141.
+
+[2pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) has been already used, duplicate ignored
+
+\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
+                                                  \fi \fi 
+l.167 
+       <./images/env-image.png>] (final.bbl
 
 Package natbib Warning: Empty `thebibliography' environment on input line 8.
 
@@ -562,42 +544,26 @@ Package natbib Warning: Empty `thebibliography' environment on input line 8.
 
 Package natbib Warning: There were undefined citations.
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 178.
-[3pdfTeX warning (ext4): destination with the same identifier (name{figure.2}) has been already used, duplicate ignored
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 184.
+[3
 
-\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
-                                                  \fi \fi 
-l.178 \end{document}
-                    pdfTeX warning (ext4): destination with the same identifier (name{figure.3}) has been already used, 
-duplicate ignored
-
-\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
-                                                  \fi \fi 
-l.178 \end{document}
-                    pdfTeX warning (ext4): destination with the same identifier (name{figure.4}) has been already used, 
-duplicate ignored
-
-\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
-                                                  \fi \fi 
-l.178 \end{document}
-                     <./images/pg_1_16_gamma1.png> <./images/pg_1_32_gamma95.png> <./images/pg_2_128_gamma1.png>]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 178.
-
-(final.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 178.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 178.
+]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 184.
+ (final.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 184.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 184.
 Package rerunfilecheck Info: File `final.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 178.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 184.
  ) 
 Here is how much of TeX's memory you used:
- 9017 strings out of 493328
- 132466 string characters out of 3139124
- 260347 words of memory out of 3000000
- 12257 multiletter control sequences out of 15000+200000
- 28784 words of font info for 133 fonts, out of 3000000 for 9000
+ 9014 strings out of 493328
+ 132136 string characters out of 3139124
+ 257648 words of memory out of 3000000
+ 12242 multiletter control sequences out of 15000+200000
+ 29313 words of font info for 142 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 33i,11n,45p,937b,422s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 33i,11n,45p,877b,422s stack positions out of 5000i,500n,10000p,200000b,50000s
 {D:/Program Files/MiKTeX 2.9/fonts/enc/dvips/base/8r.enc}<D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/c
 mmi10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi5.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1
 /public/amsfonts/cm/cmmi7.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi9.pfb><D:/Program Files/Mi
@@ -605,9 +571,9 @@ KTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/Program Files/MiKTeX 2.9/f
 D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/am
 sfonts/symbols/msbm10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/urw/times/utmb8a.pfb><D:/Program Files/MiKTeX 2.9/fon
 ts/type1/urw/times/utmr8a.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb>
-Output written on final.pdf (3 pages, 252658 bytes).
+Output written on final.pdf (3 pages, 157511 bytes).
 PDF statistics:
- 95 PDF objects out of 1000 (max. 8388607)
- 19 named destinations out of 1000 (max. 500000)
- 20501 words of extra memory for PDF output out of 20736 (max. 10000000)
+ 85 PDF objects out of 1000 (max. 8388607)
+ 20 named destinations out of 1000 (max. 500000)
+ 20486 words of extra memory for PDF output out of 20736 (max. 10000000)
 
