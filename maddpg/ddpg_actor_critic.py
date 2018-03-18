@@ -569,16 +569,16 @@ class DDPGActorCritic(object):
             action = action_batched[0]
             return action
 
-        if self.config.exploration_logging and self.t % self.config.eval_freq == 0:
-            action_pre_batched, action_post_batched = self.sess.run([self.mu_normalized, self.mu_noise], feed_dict={self.observation_placeholder: batch})
-            action_pre = action_pre_batched[0]
-            action_post = action_post_batched[0]
-            if self.config.random_process_exploration == 1:  # ornstein-uhlenbeck
-                action_post = action_post + self.noise()
-            dist = self.calculate_action_difference(action_pre, action_post)
-            print("action distance: "+str(timestep))
-            print(dist)
-            return action_post
+        #if self.config.exploration_logging and self.t % self.config.eval_freq == 0:
+        #    action_pre_batched, action_post_batched = self.sess.run([self.mu_normalized, self.mu_noise], feed_dict={self.observation_placeholder: batch})
+        #    action_pre = action_pre_batched[0]
+        #    action_post = action_post_batched[0]
+        #    if self.config.random_process_exploration == 1:  # ornstein-uhlenbeck
+        #        action_post = action_post + self.noise()
+        #    dist = self.calculate_action_difference(action_pre, action_post)
+        #    print("action distance: "+str(timestep))
+        #    print(dist)
+        #    return action_post
 
         action_batched = self.sess.run(self.mu_noise, feed_dict={self.observation_placeholder: batch})
         action = action_batched[0]
