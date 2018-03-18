@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #filename = '2_layer_128_unit_gamma_point95.txt'
 #filename = 'log2.txt'
 
-def parse_file(filename):
+def parse_file(filename, type="reward"):
     infile = file(filename)
     parsed_filename = "parsed_" + filename.split("/")[-1]
 
@@ -21,7 +21,37 @@ def parse_file(filename):
             line = "\t".join(line.split()[3:4]) + " "
             parsedopen.write(line)
             write_next = True
-        if 'Average' in line and line not in lines_seen and write_next == True:
+        if ('Average '+type) in line and line not in lines_seen and write_next == True:
+            number = line.split(":")[-1]
+            number = number.split()[0]
+            parsedopen.write(number + "\n")
+            lines_seen.add(line)
+            write_next = False
+
+    infile.close()
+    parsedopen.close()
+    return parsed_filename
+
+def parse_PG(filename, type="reward"):
+    infile = file(filename)
+    parsed_filename = "parsed_" + filename.split("/")[-1]
+
+    parsedopen = open(parsed_filename, 'w')
+
+    write_next = True
+    lines_seen = set()  # holds lines already seen
+    current_batch_number = None
+    for line in infile:
+        if 'Batch' in line and line not in lines_seen:
+            lines_seen.add(line)
+            line = line.replace(":", "")
+            line = "\t".join(line.split()[3:4]) + " "
+            current_batch_number = line
+        elif 'Evaluating' in line and line not in lines_seen:
+            lines_seen.add(line)
+            parsedopen.write(current_batch_number)
+            write_next = True
+        elif ('Average '+type) in line and line not in lines_seen and write_next == True:
             line = line.replace(":", "")
             parsedopen.write("\t".join(line.split()[4:5]) + "\n")
             lines_seen.add(line)
@@ -32,11 +62,19 @@ def parse_file(filename):
     return parsed_filename
 
 if __name__ == '__main__':
+    # specify type here
+    type = "reward"
+    #type = "distance"
+
     colors = ['blue', 'green', 'sandybrown']
     for i, filename in enumerate(sys.argv):
         if i == 0: continue
         filename = sys.argv[i]
-        parsed = parse_file(filename)
+        parsed = None
+        if "PG" in filename.split('/')[-1].split('.')[0].split('_'):
+            parsed = parse_PG(filename, type=type)
+        else:
+            parsed = parse_file(filename, type=type)
         x = []
         y = []
         parsed_file = open(parsed)
@@ -47,7 +85,7 @@ if __name__ == '__main__':
         parsed_file.close()
         label = string.join(parsed.split(".")[0].split("_")[1:], " ")
         plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=label, linewidth=2, markersize=3)
-        plt.legend(loc="lower right")
+        plt.legend(loc="center right") # center right # lower right
 
     # minx = 0
     # maxx = 200
@@ -56,7 +94,7 @@ if __name__ == '__main__':
 
     # plt.gca().invert_yaxis()
     plt.xlabel('Batch number')
-    plt.ylabel('Average reward')
+    plt.ylabel('Average '+type)
     #plt.title('Multiagent simple_spread training with PG with 1 layer and 16 hidden units')
     # plt.axis([minx,maxx,miny,maxy])
     plt.show()
