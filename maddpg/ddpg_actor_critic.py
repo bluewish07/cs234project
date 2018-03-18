@@ -73,15 +73,11 @@ class DDPGActorCritic(object):
         ############### Building the model graph ####################
     ### shared placeholders
     def add_placeholders_op(self):
-        self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.env.n, self.observation_dim))
+        self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.observation_dim))
         self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim))
         self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.action_logits_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim))
         self.reward_placeholder = tf.placeholder(tf.float32, shape=(None))
-        
-        if (self.config.neighbors_critic):
-          self.state_placeholder = tf.placeholder(tf.float32, shape=(None, self.critic_size, self.observation_dim))
-
 
     ### actor networks for simulating other agents
     def build_policy_approx_networks(self):
@@ -233,13 +229,19 @@ class DDPGActorCritic(object):
 
 
     def add_actor_loss_op(self):
-        slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
-        slice_2 = tf.slice(self.actions_n_placeholder, [0, self.agent_idx+1, 0], [self.config.batch_size, self.env.n - self.agent_idx - 1, self.action_dim])
+        # if we're using neighbors, this agent is listed as the first agent in actions_n_placeholder
+        if (self.config.neighbors_critic):
+          slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, 0, self.action_dim])
+          slice_2 = tf.slice(self.actions_n_placeholder, [0, 1, 0], [self.config.batch_size, self.critic_size - 1, self.action_dim])
+        else:
+          slice_1 = tf.slice(self.actions_n_placeholder, [0, 0, 0], [self.config.batch_size, self.agent_idx, self.action_dim])
+          slice_2 = tf.slice(self.actions_n_placeholder, [0, self.agent_idx+1, 0], [self.config.batch_size, self.critic_size - self.agent_idx - 1, self.action_dim])
+            
+        
         action_logits = tf.expand_dims(self.mu_noise, axis=1)
         actions_n = tf.concat([slice_1, action_logits, slice_2], axis=1)
         input = tf.concat([tf.layers.flatten(self.state_placeholder), tf.layers.flatten(actions_n)],
                           axis=1)
-
         combined_q_scope = self.critic_network_scope + "/" + self.q_scope
         self.q_reuse = build_mlp(input, 1, combined_q_scope, self.config.n_layers, self.config.layer_size)
 
@@ -385,6 +387,58 @@ class DDPGActorCritic(object):
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
 
+    def neighbors_batch(self, state, state_next, true_actions, est_next_actions):
+      """
+      Input:
+      state: (batch_size, num_agent, obs_dim)
+      next_state: (batch_size, num_agent, obs_dim)
+      true_actions: (batch_size, num_agents, action_dim)
+      est_next_actions: (batch_size, num_agents, action_dim)
+      
+      Output:
+      state_out: (batch_size, agent (self + neighbors), obs_dim)
+      next_state_out: (batch_size, agent (self + neighbors), obs_dim)
+      
+      in both state_out and next_state_out, the first agent will always be self (i.e. ths agent)
+      """
+      
+      state_out = []
+      state_next_out = []
+      actions_out = []
+      est_next_a_out = []
+      
+      # NV TODO this should be vectorized so it runs faster - don't loop over everything
+      for i in range(self.config.batch_size):
+        dists_obs = []
+        dists_next = []
+        this_pos = state[i, self.agent_idx, 2:4]
+        this_pos_next = state_next[i, self.agent_idx, 2:4]
+        for j in range (self.env.n):
+          other_pos = state[i, j, 2:4]
+          other_pos_next = state_next[i, j, 2:4]
+          dist_obs = np.sum(np.square(this_pos - other_pos))
+          dist_next = np.sum(np.square(this_pos_next - other_pos_next))
+          dists_obs.append(dist_obs)
+          dists_next.append(dist_next)
+        dists_obs = np.array(dists_obs)
+        dists_next = np.array(dists_next)
+        idx_obs = dists_obs.argsort()[:self.critic_size]
+        idx_next = dists_next.argsort()[:self.critic_size]
+          
+        timestep = [state[i, j, :] for j in idx_obs]
+        action = [true_actions[i, j, :] for j in idx_obs]
+        timestep_next = [state_next[i, j, :] for j in idx_next]
+        est_next_a = [est_next_actions[i,j,:] for j in idx_next]
+          
+        state_out.append(timestep)
+        actions_out.append(action)
+        state_next_out.append(timestep_next)
+        est_next_a_out.append(est_next_a)
+        
+                    
+      return (state_out, state_next_out, actions_out, est_next_a_out)
+      
+    
     def update_critic_network(self, state, true_actions, observations_by_agent, next_state, next_observations_by_agent, rewards, done_mask, agents_list=None):
         """
         Update the critic network
@@ -396,17 +450,6 @@ class DDPGActorCritic(object):
         if self.config.debug_logging:
             print("state: ")
             print(state)
-
-        # determine the closest agents (including self) so we can update the critic with them
-        if self.config.neighbors_critic:
-          this_agent = self.env.world.agents[self.agent_idx]
-          dists = []
-          for i in range (self.env.n):
-            other_agent = self.env.world.agents[i]
-            dist = np.sum(np.square(this_agent.state.p_pos - other_agent.state.p_pos))
-            dists.append(dist)
-          dists = np.array(dists)
-          closest_agents = dists.argsort()[:self.critic_size]
           
         # get the next estimated action from each agent approx network given next observation
         # Specifically, for the current agent, get the next action from the target policy network
@@ -433,10 +476,13 @@ class DDPGActorCritic(object):
                     other = agents_list[i]
                     next_actions_i = other.sess.run(other.target_mu_noise, feed_dict={other.observation_placeholder: next_observations_i})
                   
-            if (self.config.neighbors_critic and i in closest_agents) or (not self.config.neighbors_critic):
-              est_next_actions_by_agent.append(next_actions_i)
-              
+            est_next_actions_by_agent.append(next_actions_i)
+          
         est_next_actions = np.swapaxes(est_next_actions_by_agent, 0, 1)  # shape = (None, num_agent, action_dim)
+        
+        # if only looking at nearest neighbors, update all of the values used in the calculations
+        if self.config.neighbors_critic:
+          state, next_state, true_actions, est_next_actions = self.neighbors_batch(state, next_state, true_actions, est_next_actions)
             
         q_next = self.sess.run(self.target_q, feed_dict={self.state_placeholder : next_state,
                                                          self.actions_n_placeholder : est_next_actions})
@@ -470,7 +516,12 @@ class DDPGActorCritic(object):
         """
 
         # self.sess.run(self.copy_q_op, feed_dict={})
-
+        
+        # NV TODO - this is implemented poorly - call neighbors_batch here and in the critic update...
+        # can we do this more efficiently??
+        if self.config.neighbors_critic:
+          state, _, actions_n, _ = self.neighbors_batch(state, state, actions_n, actions_n)
+        
         ops_to_run = [self.train_actor_op]
         if self.config.use_batch_normalization:
             scope = self.agent_scope + "/" + self.actor_network_scope
@@ -540,10 +591,10 @@ class DDPGActorCritic(object):
 
         state, true_actions, rewards, next_state, done_mask = samples
         # update this agent's policy approx networks for other agents
-        observations_by_agent = np.swapaxes(state, 0, 1) # shape (num_agent, batch_size, observation_dim)
-        true_actions_by_agent = np.swapaxes(true_actions, 0, 1)
-        rewards_by_agent = np.swapaxes(rewards, 0, 1)
-        next_observations_by_agent = np.swapaxes(next_state, 0, 1)
+        observations_by_agent = np.swapaxes(state, 0, 1) #  (num_agent, batch_size, observation_dim)
+        true_actions_by_agent = np.swapaxes(true_actions, 0, 1) # (num_agent, batch_size, action_sim)
+        rewards_by_agent = np.swapaxes(rewards, 0, 1) # (num_agent, batch_size, reward)
+        next_observations_by_agent = np.swapaxes(next_state, 0, 1) #  (num_agent, batch_size, observation_dim)
         observation_for_current_agent = observations_by_agent[self.agent_idx]
         reward_for_current_agent = rewards_by_agent[self.agent_idx]
         

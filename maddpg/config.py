@@ -13,6 +13,7 @@ class config():
     # output config
     output_path  = "results/" + env_name + "/" + algo_name + "/"
     output_path  = "results/" + env_name + "/" + algo_name + "-3agents-1neighbor/"
+    #output_path  = "results/" + env_name + "/" + algo_name + "-4agents/"
     
     
     model_output = output_path + "model.weights/"
