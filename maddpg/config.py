@@ -3,6 +3,7 @@ import tensorflow as tf
 class config():
     debug_logging = False
     approx_debugging = False
+    exploration_logging = False
 
     # https://github.com/openai/maddpg
     env_name = "simple_spread"
