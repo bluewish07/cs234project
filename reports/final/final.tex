@@ -27,6 +27,8 @@
 \usepackage{verbatim}
 \usepackage{url}
 \usepackage{amsmath,amssymb}
+\usepackage{makecell}
+\usepackage{enumitem}
 
 \graphicspath{ {images/} }
 
@@ -65,7 +67,7 @@
 
 \icmlcorrespondingauthor{Diana Huang}{hxydiana@stanford.edu}
 \icmlcorrespondingauthor{Shalini Keshavamurthy}{skmurthy@stanford.edu}
-\icmlcorrespondingauthor{Nitin Viswanathan}{nviswana@stanford.edu}
+\icmlcorrespondingauthor{Nitin Viswanathan}{nitin.viswanathan@gmail.com}
 
 % You may provide any keywords that you
 % find helpful for describing your paper; these are used to populate
@@ -103,6 +105,13 @@ Traditional reinforcement learning approaches focus on training a single agent a
 Research into multi-agent reinforcement learning has attempted to develop new approaches specifically for multi-agent scenarios. One such recently developed algorithm is multi-agent deep deterministic policy gradients algorithm (MADDPG), which obtains significantly improved results over other approaches by modifying DDPG to train agents while incorporating information from other agents \cite{maddpg}.
 
 We replicate the MADDPG algorithm and apply it to an OpenAI cooperative navigation environment, where agents must learn to each navigate to a different fixed landmark without colliding. We experiment with various hyperparameters and exploration vs. exploitation methodologies to show how MADDPG's performance is affected by them. We also generalize MADDPG to handle larger numbers of agents and explore how performance changes accordingly.
+
+Our paper has 3 key contributions:
+\begin{itemize}[nosep]
+\item We replicate the MADDPG algorithm and apply it to the OpenAI cooperative navigation environment
+\item We experiment with various hyperparameters to show how MADDPG's performance is affected by them
+\item We generalize MADDPG to handle larger numbers of agents and explore how performance changes accordingly
+\end{itemize}
 
 \section{Related Work}
 \subsection{Single-agent methods}
@@ -168,7 +177,7 @@ In order to evaluate the performance of our algorithms, every 250 training steps
 \begin{center}
 \includegraphics[scale=0.4]{MADDPGvsPG}
 \end{center}
-\caption{Average reward achieved by Naive PG (REINFORCE) algorithm and MADDPG algorithm.}
+\caption{Average reward achieved by policy gradient algorithm and MADDPG algorithm.}
 \label{fig:MADDPGvsPG}
 \end{figure}
 
@@ -183,6 +192,8 @@ In order to evaluate the performance of our algorithms, every 250 training steps
 \textbf{REINFORCE and MADDPG.} As shown in Figure \ref{fig:MADDPGvsPG} and Figure \ref{fig:MADDPGvsPG_distance}, REINFORCE has difficulties learning a good policy as the world keeps changing from each agent's perspective. If other agents make a wrong move, it would reflect badly on this agent even though it might have picked a good action. In other words, the feedback signal is erroneous. Whereas with MADDPG, the centralized critic function takes into consideration other agents' observations and moves, so that the network could more accurately attribute rewards and penalties.  
 
 Figures X,Y,and Z show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
+
+\textbf{Changing network size}. Finally, we experimented with reducing the size of the neural network layers for the policy and Q networks to see the impact on training. We observed that the best achievable reward in a training run with 2-layer 64-unit networks (as opposed to the default of 2 layesr with 128-unit networks) was around -175, which is noticeably lower than the -150 achieved with the default network size. This shows that the increased complexity of the neural networks do in fact help to define the right actions to take in the cooperative navigation task. 
 
 \section{Conclusion}
 We introduce the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implement a policy gradients as a baseline and also MADDPG, an algorithm designed for multi-agent scenarios, and apply them to the OpenAI cooperative navigation environment. 
