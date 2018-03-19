@@ -116,7 +116,7 @@ Our paper has 3 key contributions:
 
 \section{Related Work}
 \subsection{Single-agent methods}
-Prior work on multi-agent scenaris has attempted to use single-agent methods that train agents independently, but with limited success. Q-learning has been applied to cooperative multi-agent systems, but prior work has found it to be less robust than in single-agent settings \cite{sandholm1996}, \cite{claus1998dynamics}. Other work has attempted to modify Q-learning to better fit multi-agent scenarios, but focused primarily on cooperative environments instead of also considering competitive ones \cite{cooperativeQ}.
+Prior work on multi-agent scenarios has attempted to use single-agent methods that train agents independently, but with limited success. Q-learning has been applied to cooperative multi-agent systems, but prior work has found it to be less robust than in single-agent settings \cite{sandholm1996}, \cite{claus1998dynamics}. Other work has attempted to modify Q-learning to better fit multi-agent scenarios, but focused primarily on cooperative environments instead of also considering competitive ones \cite{cooperativeQ}.
 
 Other work has tried to address the problem by using incremental learning and policy gradient approaches \cite{buffet2007}. These approaches struggle because from the point of view of any one agent, the environment is non-stationary as other agents change their policies \cite{busoniu2008comprehensive}, \cite{bucsoniu2010multi}. We expand on these issues later in our paper where we detail our approach.
 
@@ -298,7 +298,15 @@ To further evaluate, we compare the Euclidean distance between the effective dis
 
 \textbf{Changing network size.} We experimented with reducing the size of the neural network layers for the policy and Q networks to see the impact on training. We observed that the best achievable reward in a training run with 2-layer 64-unit networks (as opposed to the default of 2 layers with 128-unit networks) was around -175, which is noticeably lower than the -150 achieved with the default network size. This shows that the increased complexity of the neural networks do in fact help to define the right actions to take in the cooperative navigation task. 
 
-\textbf{Scaling MADDPG to only use neighboring agents.} \textbf{TODO ONCE WE HAVE THE PLOT}
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.5]{MADDPG_different_neighbors.png}
+\end{center}
+\caption{Average reward gained by each agent in environment with different number of agents and landmarks}
+\label{fig:avg_reward_different_neighbors}
+\end{figure}
+
+\textbf{Scaling MADDPG to only use neighboring agents.} The input space of $Q$ grows linearly with the increase in the number of agents. This increases the memory requirements and the policies are learned very slowly. So we experimented with providing fewer neighbor information to the agent. The number of neighboring agent ($n$) info to be used is provided as a hyperparameter where $n < N$. Figure \ref{fig:avg_reward_different_neighbors} shows the performance of different agents using lesser number of neighbor info. This shows that the agents policies are not as good when using the information from all the neighbors.  
 
 \section{Conclusion}
 
