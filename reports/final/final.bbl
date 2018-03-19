@@ -1,15 +1,77 @@
-\begin{thebibliography}{7}
+\begin{thebibliography}{18}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
+\bibitem[Boutilier(1996)]{boutilier1996planning}
+Boutilier, Craig.
+\newblock Planning, learning and coordination in multiagent decision processes.
+\newblock In \emph{Proceedings of the 6th conference on Theoretical aspects of
+  rationality and knowledge}, pp.\  195--210. Morgan Kaufmann Publishers Inc.,
+  1996.
+
+\bibitem[Buffet et~al.(2007)Buffet, Dutech, and Charpillet]{buffet2007}
+Buffet, Olivier, Dutech, Alain, and Charpillet, Fran{\c{c}}ois.
+\newblock Shaping multi-agent systems with gradient reinforcement learning.
+\newblock \emph{Autonomous Agents and Multi-Agent Systems}, 15\penalty0
+  (2):\penalty0 197--220, Oct 2007.
+\newblock ISSN 1573-7454.
+\newblock \doi{10.1007/s10458-006-9010-5}.
+\newblock URL \url{https://doi.org/10.1007/s10458-006-9010-5}.
+
+\bibitem[Busoniu et~al.(2008)Busoniu, Babuska, and
+  De~Schutter]{busoniu2008comprehensive}
+Busoniu, Lucian, Babuska, Robert, and De~Schutter, Bart.
+\newblock A comprehensive survey of multiagent reinforcement learning.
+\newblock \emph{IEEE Trans. Systems, Man, and Cybernetics, Part C}, 38\penalty0
+  (2):\penalty0 156--172, 2008.
+
+\bibitem[Bu{\c{s}}oniu et~al.(2010)Bu{\c{s}}oniu, Babu{\v{s}}ka, and
+  De~Schutter]{bucsoniu2010multi}
+Bu{\c{s}}oniu, Lucian, Babu{\v{s}}ka, Robert, and De~Schutter, Bart.
+\newblock Multi-agent reinforcement learning: An overview.
+\newblock In \emph{Innovations in multi-agent systems and applications-1}, pp.\
+   183--221. Springer, 2010.
+
+\bibitem[Chalkiadakis \& Boutilier(2003)Chalkiadakis and
+  Boutilier]{chalkiadakis2003coordination}
+Chalkiadakis, Georgios and Boutilier, Craig.
+\newblock Coordination in multiagent reinforcement learning: A bayesian
+  approach.
+\newblock In \emph{Proceedings of the second international joint conference on
+  Autonomous agents and multiagent systems}, pp.\  709--716. ACM, 2003.
+
+\bibitem[Claus \& Boutilier(1998)Claus and Boutilier]{claus1998dynamics}
+Claus, Caroline and Boutilier, Craig.
+\newblock The dynamics of reinforcement learning in cooperative multiagent
+  systems, 1998.
+
 \bibitem[Foerster et~al.(2016)Foerster, Assael, de~Freitas, and
   Whiteson]{communication}
 Foerster, J.~N., Assael, Y.~M., de~Freitas, N., and Whiteson, S.
 \newblock Learning to communicate with deep multi-agent reinforcement learning,
   2016.
+
+\bibitem[Foerster et~al.(2017)Foerster, Farquhar, Afouras, Nardelli, and
+  Whiteson]{coma}
+Foerster, Jakob, Farquhar, Gregory, Afouras, Triantafyllos, Nardelli, Nantas,
+  and Whiteson, Shimon.
+\newblock Counterfactual multi-agent policy gradients.
+\newblock \emph{arXiv preprint arXiv:1705.08926}, 2017.
+
+\bibitem[Lauer \& Riedmiller(2000)Lauer and Riedmiller]{cooperativeQ}
+Lauer, M. and Riedmiller, M.
+\newblock An algorithm for distributed reinforcement learning in cooperative
+  multi-agent systems, 2000.
+
+\bibitem[Lillicrap et~al.(2015)Lillicrap, Hunt, Pritzel, Heess, Erez, Tassa,
+  Silver, and Wierstra]{lillicrap2015continuous}
+Lillicrap, Timothy~P, Hunt, Jonathan~J, Pritzel, Alexander, Heess, Nicolas,
+  Erez, Tom, Tassa, Yuval, Silver, David, and Wierstra, Daan.
+\newblock Continuous control with deep reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1509.02971}, 2015.
 
 \bibitem[Lowe et~al.(2017)Lowe, Wu, Tamar, Harb, Abbeel, and Mordatch]{maddpg}
 Lowe, Ryan, Wu, Yi, Tamar, Aviv, Harb, Jean, Abbeel, Pieter, and Mordatch,
@@ -42,10 +104,24 @@ Peng, P., Yuan, Q., Wen, Y., Yang, Y., Tang, Z., Long, H., and Wang, J.
 \newblock Multiagent bidirectionallycoordinated nets for learning to play
   starcraft combat games, 2017.
 
+\bibitem[Sandholm \& Crites(1996)Sandholm and Crites]{sandholm1996}
+Sandholm, Tuomas~W. and Crites, Robert~H.
+\newblock Multiagent reinforcement learning in the iterated prisoner's dilemma.
+\newblock \emph{Biosystems}, 37\penalty0 (1):\penalty0 147 -- 166, 1996.
+\newblock ISSN 0303-2647.
+\newblock \doi{https://doi.org/10.1016/0303-2647(95)01551-5}.
+\newblock URL
+  \url{http://www.sciencedirect.com/science/article/pii/0303264795015515}.
+
 \bibitem[Sukhbaatar et~al.(2017)Sukhbaatar, Kostrikov, Szlam, , and
   Fergus]{selfplay}
 Sukhbaatar, S., Kostrikov, I., Szlam, A., , and Fergus, R.
 \newblock Intrinsic motivation and automatic curricula via asymmetric
   self-play, 2017.
+
+\bibitem[Sutton \& Barto(1998)Sutton and Barto]{suttonbarto1998rl}
+Sutton, R.~S. and Barto, A.~G.
+\newblock \emph{Reinforcement Learning: An Introduction}.
+\newblock MIT press Cambridge, volume 1 edition, 1998.
 
 \end{thebibliography}
