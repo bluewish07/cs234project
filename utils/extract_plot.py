@@ -62,43 +62,43 @@ def parse_PG(filename, type="reward"):
     parsedopen.close()
     return parsed_filename
 
-# if __name__ == '__main__':
-#     # specify type here
-#     type = "reward"
-#     #type = "distance"
-#
-#     colors = ['blue', 'green', 'sandybrown']
-#     for i, filename in enumerate(sys.argv):
-#         if i == 0: continue
-#         filename = sys.argv[i]
-#         parsed = None
-#         if "PG" in filename.split('/')[-1].split('.')[0].split('_'):
-#             parsed = parse_PG(filename, type=type)
-#         else:
-#             parsed = parse_file(filename, type=type)
-#         x = []
-#         y = []
-#         parsed_file = open(parsed)
-#         for line in parsed_file:
-#             fields = line.strip().split()
-#             x.append(fields[0])
-#             y.append(fields[1])
-#         parsed_file.close()
-#         label = string.join(parsed.split(".")[0].split("_")[1:], " ")
-#         plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=label, linewidth=2, markersize=3)
-#         plt.legend(loc="lower right") # center right # lower right
-#
-#     # minx = 0
-#     # maxx = 200
-#     # miny = -70000  #-160000    #max(min(y),-70000)
-#     # maxy = 0  #2000   #max(max(y),0)
-#
-#     # plt.gca().invert_yaxis()
-#     plt.xlabel('Batch number')
-#     plt.ylabel('Average '+type)
-#     #plt.title('Multiagent simple_spread training with PG with 1 layer and 16 hidden units')
-#     # plt.axis([minx,maxx,miny,maxy])
-#     plt.show()
+if __name__ == '__main__':
+    # specify type here
+    type = "reward"
+    #type = "distance"
+
+    colors = ['blue', 'green', 'sandybrown']
+    for i, filename in enumerate(sys.argv):
+        if i == 0: continue
+        filename = sys.argv[i]
+        parsed = None
+        if "PG" in filename.split('/')[-1].split('.')[0].split('_'):
+            parsed = parse_PG(filename, type=type)
+        else:
+            parsed = parse_file(filename, type=type)
+        x = []
+        y = []
+        parsed_file = open(parsed)
+        for line in parsed_file:
+            fields = line.strip().split()
+            x.append(fields[0])
+            y.append(fields[1])
+        parsed_file.close()
+        label = string.join(parsed.split(".")[0].split("_")[1:], " ")
+        plt.plot(x, y, color=colors[i-1], marker="o", linestyle="solid", label=label, linewidth=2, markersize=3)
+        plt.legend(loc="lower right") # center right # lower right
+
+    # minx = 0
+    # maxx = 200
+    # miny = -70000  #-160000    #max(min(y),-70000)
+    # maxy = 0  #2000   #max(max(y),0)
+
+    # plt.gca().invert_yaxis()
+    plt.xlabel('Batch number')
+    plt.ylabel('Average '+type)
+    #plt.title('Multiagent simple_spread training with PG with 1 layer and 16 hidden units')
+    # plt.axis([minx,maxx,miny,maxy])
+    plt.show()
 
 ##### Below is for plotting action exploration range and std deviation
 
@@ -173,8 +173,8 @@ def parse_action_exploration(filename):
 #         parsed_file.close()
 #         label = string.join(parsed.split(".")[0].split("_")[1:], " ")
 #         # for range
-#         plt.plot(x, min, color=colors[i - 1], marker="_", linestyle="solid", label=label, linewidth=0, markersize=5, markeredgewidth=1)
-#         plt.plot(x, max, color=colors[i - 1], marker="_", linestyle="solid", label=label, linewidth=0, markersize=5, markeredgewidth=1)
+#         plt.plot(x, min, color=colors[i - 1], marker="_", linestyle="solid", label=label, linewidth=0, markersize=7, markeredgewidth=1)
+#         plt.plot(x, max, color=colors[i - 1], marker="_", linestyle="solid", label=label, linewidth=0, markersize=7, markeredgewidth=1)
 #         line = plt.vlines(x, min, max, color=colors[i - 1], linewidth=3)
 #         lines.append(line)
 #         labels.append(label)
