@@ -165,6 +165,24 @@ Our primary evaluation metric is $R = \frac{1}{E} \sum\limits_E \sum\limits_t $ 
 
 \textbf{TODO - also include a table with our main hyperparameters (copy from poster) and explain what they are for in text}
 
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.4]{MADDPGvsPG}
+\end{center}
+\caption{Average reward achieved by Naive PG (REINFORCE) algorithm and MADDPG algorithm.}
+\label{fig:MADDPGvsPG}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.4]{MADDPGvsPG_distance}
+\end{center}
+\caption{Average distance from landmarks with Naive PG algorithm and MADDPG algorithm.}
+\label{fig:MADDPGvsPG_distance}
+\end{figure}
+
+\textbf{REINFORCE and MADDPG.} As shown in Figure \ref{fig:MADDPGvsPG} and Figure \ref{fig:MADDPGvsPG_distance}, REINFORCE has difficulties learning a good policy as the world keeps changing from each agent's perspective. If other agents make a wrong move, it would reflect badly on this agent even though it might have picked a good action. In other words, the feedback signal is erroneous. Whereas with MADDPG, the centralized critic function takes into consideration other agents' observations and moves, so that the network could more accurately attribute rewards and penalties.  
+
 Figures X,Y,and Z show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
 
 \section{Conclusion}
