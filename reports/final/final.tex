@@ -235,7 +235,7 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 
 \subsection{Experiments}
 
-\textbf{Baseline comparison.} As a baseline, we compare the performance of our policy gradient baseline and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters} except with a batch size of 1024 episodes as used in \cite{maddpg}. As shown in Figures \ref{fig:MADDPGvsPG} and \ref{fig:MADDPGvsPG_distance}, the policy gradient approach has difficulties learning a good policy. It fails to improve while training and produces extremely noisy results. In contrast, MADDPG's performance steadily improves as training progresses and it exhibits much less variation in results, indicating that training is more stable. We believe MADDPG's performance comes from the fact that it uses a centralized critic function to allow agents to train themselves to make more accurate decisions given what other agents do as well.
+\textbf{Baseline comparison.} As a baseline, we compare the performance of our policy gradient baseline and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters} except with a batch size of 1024 episodes as used in \cite{maddpg}. As shown in Figures \ref{fig:MADDPGvsPG} and \ref{fig:MADDPGvsPG_distance}, the policy gradient approach has difficulties learning a good policy. It fails to improve while training and produces extremely noisy results. In contrast, MADDPG's performance steadily improves as training progresses and it exhibits much less variation in results, indicating that training is more stable. We believe MADDPG's good performance comes from the fact that it uses a centralized critic function and that we can apply experience replay as a result.
 
 \begin{figure}
 \begin{center}
@@ -253,7 +253,7 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 \label{fig:MADDPGvsPG_distance}
 \end{figure}
 
-\textbf{Baseline comparison.} \textbf{TODO ONCE WE HAVE THE PLOT}
+\textbf{Batch size comparison.} \textbf{TODO ONCE WE HAVE THE PLOT}
 
 \textbf{Exploration strategies.} Next, we experimented experiment with 3 different methods of action exploration. First, we try re-implementing what Open AI does, which adds noise onto unnormalized policy network output, and then takes softmax to get the final action. We also try using Ornstein-Uhlenbeck process, with $\sigma = 0.3, \theta = 0.15$. Lastly, we experiment sampling from multivariate normal distribution with a trainable standard deviation. Figure \ref{fig:defaultVSouVSdist} shows the plot for average rewards with different action exploration strategies.
 
@@ -294,9 +294,9 @@ To further evaluate, we compare the Euclidean distance between the effective dis
 \label{fig:avg_reward_multiple_agents}
 \end{figure}
 
-\textbf{Increased number of agents and landmarks.} Figure \ref{fig:avg_reward_multiple_agents} show the results from training different number of agents using MADDPG. For each result, the number of agents is equal to the number of landmarks. For smaller number of agents the average rewards increases with training whereas for even 1 or 2 more agents in the scenario, the training is not good enough. This can be attributed to the increased information from agents and increased complexity of environment due to more number of landmarks. Depending on the location of landmarks, the agents may or may not learn the policy for achieving the goal.   
-
 \textbf{Changing network size.} We experimented with reducing the size of the neural network layers for the policy and Q networks to see the impact on training. We observed that the best achievable reward in a training run with 2-layer 64-unit networks (as opposed to the default of 2 layers with 128-unit networks) was around -175, which is noticeably lower than the -150 achieved with the default network size. This shows that the increased complexity of the neural networks do in fact help to define the right actions to take in the cooperative navigation task. 
+
+\textbf{Increased number of agents and landmarks.} Figure \ref{fig:avg_reward_multiple_agents} show the results from training different number of agents using MADDPG. For each result, the number of agents is equal to the number of landmarks. For smaller number of agents the average rewards increases with training whereas for even 1 or 2 more agents in the scenario, the training is not good enough. This can be attributed to the increased information from agents and increased complexity of environment due to more number of landmarks. Depending on the location of landmarks, the agents may or may not learn the policy for achieving the goal.   
 
 \begin{figure}
 \begin{center}
@@ -306,7 +306,9 @@ To further evaluate, we compare the Euclidean distance between the effective dis
 \label{fig:avg_reward_different_neighbors}
 \end{figure}
 
-\textbf{Scaling MADDPG to only use neighboring agents.} The input space of $Q$ grows linearly with the increase in the number of agents. This increases the memory requirements and the policies are learned very slowly. So we experimented with providing fewer neighbor information to the agent. The number of neighboring agent ($n$) info to be used is provided as a hyperparameter where $n < N$. Figure \ref{fig:avg_reward_different_neighbors} shows the performance of different agents using lesser number of neighbor info. This shows that the agents policies are not as good when using the information from all the neighbors.  
+\textbf{Scaling MADDPG to only use neighboring agents.} Figure \ref{fig:avg_reward_different_neighbors} shows the performance of our modified MADDPG implementation that only uses information from the $K$ nearest neighbors during training, where $K < N-1$. We evaluated our implementation in two different scenarios, one with 3 agents but only using information from 1 neighbor instead of both, and one with 5 agents and using information from 2 neighbors instead of all 4, and compared the performance in these to scenarios with 3 and 5 agents using information from all other agents. The modified MADDPG algorithm performs slightly worse at both 3 and 5 agents, which is to be expected as less information is used during training. However, we can see that the gap in performance at $N=5$ is small, suggesting the possibility that as $N$ increases further, the gap might continue to remain small. This hypothesis requires more runs to validate (e.g. running a scenario with 7 agents with and without limited information on neighbors), but intuitively makes sense as having information on nearest neighbors is the most relevant information to avoiding collisions. As long as an agent moves towards a landmark while also avoiding collisions with its nearest neighbors, it is likely going to increase overall episode reward.
+
+Another advantage of our modified MADDPG implementation is that the Q network has fewer parameters, speeding up training especially as $N$ continues to increase relative to $K$.
 
 \section{Conclusion}
 
