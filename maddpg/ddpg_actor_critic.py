@@ -217,14 +217,14 @@ class DDPGActorCritic(object):
                                                                    message="action logits")
                 self.target_mu_noise = tf.nn.softmax(self.target_mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.target_mu)))), axis=-1)
             elif self.config.random_process_exploration == 1:
-                self.mu_noise = self.mu_normalized
-                self.target_mu_noise = self.target_mu_normalized
+                self.mu_noise = self.mu_normalized + self.noise()
+                self.target_mu_noise = self.target_mu_normalized + self.noise()
             elif self.config.random_process_exploration == 2:
                 log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
                 std = tf.exp(log_std)
                 dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu_normalized, std)
                 self.mu_noise = dist.sample()
-                self.target_mu_noise = self.target_mu_normalized
+                self.target_mu_noise = tf.contrib.distributions.MultivariateNormalDiag(self.target_mu_normalized, std).sample()
 
 
 
@@ -382,7 +382,7 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss, grad_norm]
+            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})
