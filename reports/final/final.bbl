@@ -1,9 +1,16 @@
-\begin{thebibliography}{18}
+\begin{thebibliography}{20}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bibbona et~al.(2008)Bibbona, Panfilo, and Tavella]{ou}
+Bibbona, Enrico, Panfilo, Gianna, and Tavella, Patrizia.
+\newblock The ornstein–uhlenbeck process as a model of a low pass filtered
+  white noise.
+\newblock \emph{Metrologia}, 45\penalty0 (6):\penalty0 S117, 2008.
+\newblock URL \url{http://stacks.iop.org/0026-1394/45/i=6/a=S17}.
 
 \bibitem[Boutilier(1996)]{boutilier1996planning}
 Boutilier, Craig.
