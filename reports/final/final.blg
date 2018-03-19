@@ -1,3 +1,46 @@
-This is BibTeX, Version 0.99dThe top-level auxiliary file: final.aux
+This is BibTeX, Version 0.99d (TeX Live 2013/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: final.aux
 The style file: icml2018.bst
 Database file #1: final.bib
+You've used 17 entries,
+            2773 wiz_defined-function locations,
+            697 strings with 8165 characters,
+and the built_in function-call counts, 8388 in all, are:
+= -- 733
+> -- 560
+< -- 10
++ -- 189
+- -- 171
+* -- 685
+:= -- 1278
+add.period$ -- 55
+call.type$ -- 17
+change.case$ -- 108
+chr.to.int$ -- 16
+cite$ -- 34
+duplicate$ -- 350
+empty$ -- 648
+format.name$ -- 198
+if$ -- 1769
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 11
+newline$ -- 94
+num.names$ -- 68
+pop$ -- 234
+preamble$ -- 1
+purify$ -- 91
+quote$ -- 0
+skip$ -- 307
+stack$ -- 0
+substring$ -- 232
+swap$ -- 49
+text.length$ -- 3
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 182
+warning$ -- 0
+while$ -- 67
+width$ -- 0
+write$ -- 225

@@ -106,11 +106,14 @@ We replicate the MADDPG algorithm and apply it to an OpenAI cooperative navigati
 
 \section{Related Work}
 \subsection{Single-agent methods}
-\textbf{TODO - prior work applying PG directly, Q-learning directly, etc.}
+Plenty of research has been carried out to find the optimal policy for each agent in a multi-agent environment. \cite{sandholm1996},\cite{claus1998dynamics} applied Q learning to cooperative multi-agent systems and found that it was as robust as in single-agent settings. 
+\cite{buffet2007} tried to address the problem by using incremental learning and policy gradient approaches. The problem with these kinds of approaches is that single-agent RL methods assumes agent-independent environments. The interaction of single agents with other agents is a nonstationary environment and as research has shown the single agent RL methods will not work in a multi-agent scenario due to high variance in rewards.   
 
 \subsection{Multi-agent methods}
-\textbf{TODO - what we've read on multi-agent approaches including MADDPG}
 
+\cite{boutilier1996planning} discusses coordination and planning between multi-agents using multi-agent markov decision processes (MMDP) where all the agents know the order and information about all other agents. \cite{chalkiadakis2003coordination} proposes the use of bayesian models for optimal exploration in MARL problems. \cite{panait2005cooperative} presents the survey of the state of the art in MARL citing team heterogeneous and hybrid team learning, concurrent learning and distributed RL.
+
+\cite{busoniu2008comprehensive}, \cite{bucsoniu2010multi} and others have stated the problems of MARL over the years and how it is very hard to tackle the problem  of nonstationarity and variance reduction. \cite{maddpg} has combined concepts from \cite{suttonbarto1998rl} and \cite{lillicrap2015continuous} to address the above mentioned issues for multi-agent scenario. We consider this paper as the main algorithm of choice for implementation and analysis in the next section.
 \section{Approach}
 
 \subsection{Environment}
@@ -199,7 +202,7 @@ Besides the metrics defined above, each experiment may additional context-specif
 \label{fig:defaultVSouVSdist}
 \end{figure}
 
-We found that applying noise to unnormaized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches. They suggest 
+We found that applying noise to unnormalized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches. They suggest 
 
 \begin{figure}
 \begin{center}
@@ -219,6 +222,16 @@ We found that applying noise to unnormaized policy network output outperforms ot
 
 
 Figures X,Y,and Z show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.5]{maddpg_3,4,5agents.png}
+\end{center}
+\caption{Average reward gained by using different exploration strategies.}
+\label{fig:avg_reward_multiple_agents}
+\end{figure}
+
+\textbf{Increased number of agents and landmarks.} Figure \ref{fig:avg_reward_multiple_agents} show the results from training different number of agents using MADDPG. For each result, the number of agents is equal to the number of landmarks. For smaller number of agents the average rewards increases with training whereas for even 1 or 2 more agents in the scenario, the training is not good enough. This can be attributed to the increased information from agents and increased complexity of environment due to more number of landmarks. Depending on the location of landmarks, the agents may or may not learn the policy for achieving the goal.   
 
 \section{Conclusion}
 We introduce the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implement a policy gradients as a baseline and also MADDPG, an algorithm designed for multi-agent scenarios, and apply them to the OpenAI cooperative navigation environment. 
