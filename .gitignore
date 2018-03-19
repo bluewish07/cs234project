@@ -18,4 +18,6 @@ reports/milestone/*.fls
 *.bbl
 *.blg
 *.log
-*.synctex
+*.synctex*
+reports/final/final.fdb_latexmk
+*.fls
