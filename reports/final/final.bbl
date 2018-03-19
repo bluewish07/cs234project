@@ -1,8 +1,51 @@
-\begin{thebibliography}{0}
+\begin{thebibliography}{7}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Foerster et~al.(2016)Foerster, Assael, de~Freitas, and
+  Whiteson]{communication}
+Foerster, J.~N., Assael, Y.~M., de~Freitas, N., and Whiteson, S.
+\newblock Learning to communicate with deep multi-agent reinforcement learning,
+  2016.
+
+\bibitem[Lowe et~al.(2017)Lowe, Wu, Tamar, Harb, Abbeel, and Mordatch]{maddpg}
+Lowe, Ryan, Wu, Yi, Tamar, Aviv, Harb, Jean, Abbeel, Pieter, and Mordatch,
+  Igor.
+\newblock Multi-agent actor-critic for mixed cooperative-competitive
+  environments.
+\newblock \emph{CoRR}, abs/1706.02275, 2017.
+\newblock URL \url{http://arxiv.org/abs/1706.02275}.
+
+\bibitem[Matignon et~al.(2012{\natexlab{a}})Matignon, Jeanpierre, and
+  et~al.]{multirobot}
+Matignon, L., Jeanpierre, L., and et~al., A.-I.~Mouaddib.
+\newblock Coordinated multi-robot exploration under communication constraints
+  using decentralized markov decision processes, 2012{\natexlab{a}}.
+
+\bibitem[Matignon et~al.(2012{\natexlab{b}})Matignon, Laurent, and
+  Fort-Piat]{unstable}
+Matignon, L., Laurent, G.~J., and Fort-Piat, N.~Le.
+\newblock Independent reinforcement learners in cooperative markov games: a
+  survey regarding coordination problems, 2012{\natexlab{b}}.
+
+\bibitem[OpenAI(2017)]{openaigym}
+OpenAI.
+\newblock Multi-agent particle environments.
+\newblock \url{https://github.com/openai/multiagent-particle-envs}, 2017.
+
+\bibitem[Peng et~al.(2017)Peng, Yuan, Wen, Yang, Tang, Long, and
+  Wang]{multigames}
+Peng, P., Yuan, Q., Wen, Y., Yang, Y., Tang, Z., Long, H., and Wang, J.
+\newblock Multiagent bidirectionallycoordinated nets for learning to play
+  starcraft combat games, 2017.
+
+\bibitem[Sukhbaatar et~al.(2017)Sukhbaatar, Kostrikov, Szlam, , and
+  Fergus]{selfplay}
+Sukhbaatar, S., Kostrikov, I., Szlam, A., , and Fergus, R.
+\newblock Intrinsic motivation and automatic curricula via asymmetric
+  self-play, 2017.
 
 \end{thebibliography}

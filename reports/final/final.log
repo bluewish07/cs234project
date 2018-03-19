@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.5.13)  18 MAR 2018 18:34
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.5.13)  18 MAR 2018 19:14
 entering extended mode
 **./final.tex
 (final.tex
@@ -494,75 +494,86 @@ LaTeX Font Info:    Font shape `OML/ptm/m/n' in size <9> not available
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 89.
 
-
-Package natbib Warning: Citation `multigames' on page 1 undefined on input line 99.
-
-
-Package natbib Warning: Citation `multirobot' on page 1 undefined on input line 99.
-
-
-Package natbib Warning: Citation `communication' on page 1 undefined on input line 99.
-
-
-Package natbib Warning: Citation `selfplay' on page 1 undefined on input line 99.
-
-
-Package natbib Warning: Citation `unstable' on page 1 undefined on input line 101.
-
-
-Package natbib Warning: Citation `maddpg' on page 1 undefined on input line 103.
-
-
-Package natbib Warning: Citation `openaigym' on page 1 undefined on input line 118.
-
-
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [1{C:/ProgramData/MiKTeX/2.9/pdftex/config/pdftex.map}
 
 
 
-] <images/env-image.png, id=19, 418.56375pt x 235.63031pt>
+] <images/env-image.png, id=42, 418.56375pt x 235.63031pt>
 File: images/env-image.png Graphic file (type png)
  <use images/env-image.png>
-Package pdftex.def Info: images/env-image.png used on input line 126.
+Package pdftex.def Info: images/env-image.png used on input line 128.
 (pdftex.def)             Requested size: 209.28136pt x 117.81487pt.
+ [2pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) has been already used, duplicate ignored
 
-
-Package natbib Warning: Citation `maddpg' on page 2 undefined on input line 139.
-
-[2pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.153 
-       <./images/env-image.png>]
+l.155 
+       <./images/env-image.png>] <images/MADDPGvsPG.png, id=59, 578.16pt x 433.62pt>
+File: images/MADDPGvsPG.png Graphic file (type png)
+ <use images/MADDPGvsPG.png>
+Package pdftex.def Info: images/MADDPGvsPG.png used on input line 169.
+(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
+
+<images/MADDPGvsPG_distance.png, id=61, 578.16pt x 433.62pt>
+File: images/MADDPGvsPG_distance.png Graphic file (type png)
+ <use images/MADDPGvsPG_distance.png>
+Package pdftex.def Info: images/MADDPGvsPG_distance.png used on input line 177.
+(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- (final.bbl
+ [3pdfTeX warning (ext4): destination with the same identifier (name{figure.2}) has been already used, duplicate ignored
 
-Package natbib Warning: Empty `thebibliography' environment on input line 8.
+
+\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
+                                                  \fi \fi 
+l.192 
+      pdfTeX warning (ext4): destination with the same identifier (name{figure.3}) has been already used, duplicate igno
+red
+
+\AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
+                                                  \fi \fi 
+l.192 
+       <./images/MADDPGvsPG.png> <./images/MADDPGvsPG_distance.png>] (final.bbl
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 20.
+
+("D:\Program Files\MiKTeX 2.9\tex\latex\psnfss\ot1pcr.fd"
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `pcr' (encoding: OT1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+
+Underfull \hbox (badness 10000) in paragraph at lines 35--38
+[]\OT1/ptm/m/n/10 (+20) OpenAI.  Multi-agent par-ti-cle en-vi-ron-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 35--38
+\OT1/ptm/m/n/10 (+20) ments.  [][]$\OT1/pcr/m/n/10 https : / / github . com / openai /
+ []
 
 )
-
-Package natbib Warning: There were undefined citations.
-
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 183.
-[3]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 183.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 201.
+ [4]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 201.
  (final.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 183.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 183.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 201.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 201.
 Package rerunfilecheck Info: File `final.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 183.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 201.
  ) 
 Here is how much of TeX's memory you used:
- 9018 strings out of 493328
- 132174 string characters out of 3139124
- 258648 words of memory out of 3000000
- 12242 multiletter control sequences out of 15000+200000
- 29432 words of font info for 144 fonts, out of 3000000 for 9000
+ 9110 strings out of 493328
+ 133630 string characters out of 3139124
+ 260709 words of memory out of 3000000
+ 12301 multiletter control sequences out of 15000+200000
+ 32334 words of font info for 156 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
  33i,11n,45p,822b,422s stack positions out of 5000i,500n,10000p,200000b,50000s
 {D:/Program Files/MiKTeX 2.9/fonts/enc/dvips/base/8r.enc}<D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/c
@@ -571,11 +582,12 @@ mmi10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi5.pfb>
 KTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr7.pfb><
 D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy10.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/am
 sfonts/cm/cmsy7.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/public/amsfonts/symbols/msbm10.pfb><D:/Program Files/MiKTeX
- 2.9/fonts/type1/urw/times/utmb8a.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb><D:/Program Files/Mi
-KTeX 2.9/fonts/type1/urw/times/utmr8a.pfb>
-Output written on final.pdf (3 pages, 170855 bytes).
+ 2.9/fonts/type1/urw/courier/ucrr8a.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/urw/times/utmb8a.pfb><D:/Program Files/
+MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb><D:/Program Files/MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb><D:/Program Fi
+les/MiKTeX 2.9/fonts/type1/urw/times/utmri8a.pfb>
+Output written on final.pdf (4 pages, 383342 bytes).
 PDF statistics:
- 90 PDF objects out of 1000 (max. 8388607)
- 21 named destinations out of 1000 (max. 500000)
- 20486 words of extra memory for PDF output out of 20736 (max. 10000000)
+ 142 PDF objects out of 1000 (max. 8388607)
+ 31 named destinations out of 1000 (max. 500000)
+ 25104 words of extra memory for PDF output out of 29859 (max. 10000000)
 
