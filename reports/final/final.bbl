@@ -104,6 +104,13 @@ Peng, P., Yuan, Q., Wen, Y., Yang, Y., Tang, Z., Long, H., and Wang, J.
 \newblock Multiagent bidirectionallycoordinated nets for learning to play
   starcraft combat games, 2017.
 
+\bibitem[Plappert et~al.(2017)Plappert, Houthooft, Dhariwal, Sidor, Chen, Chen,
+  Asfour, Abbeel, and Andrychowicz]{plappert2017parameter}
+Plappert, Matthias, Houthooft, Rein, Dhariwal, Prafulla, Sidor, Szymon, Chen,
+  Richard~Y, Chen, Xi, Asfour, Tamim, Abbeel, Pieter, and Andrychowicz, Marcin.
+\newblock Parameter space noise for exploration.
+\newblock \emph{arXiv preprint arXiv:1706.01905}, 2017.
+
 \bibitem[Sandholm \& Crites(1996)Sandholm and Crites]{sandholm1996}
 Sandholm, Tuomas~W. and Crites, Robert~H.
 \newblock Multiagent reinforcement learning in the iterated prisoner's dilemma.
