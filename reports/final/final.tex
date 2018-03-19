@@ -170,9 +170,35 @@ Besides the metrics defined above, each experiment may additional context-specif
 
 \subsection{Experiments}
 
-\textbf{TODO - include all of the various experiments we ran, and an analysis of each of them}
+The hyperparameters for the experiments described in this section follow the values mentioned in the Table \ref{tab:basecase_parameters} unless mentioned otherwise.
 
-\textbf{TODO - also include a table with our main hyperparameters (copy from poster) and explain what they are for in text}
+\textbf{Episode Length.} The sequence of actions an agent can take from the start state to the terminal state. This is measured in terms of steps.
+
+\textbf{Batch size.} The sequence of agent observations, actions, rewards and next observations used to train an agent. We consider the batch size in terms of episodes. Therefore for a batch size of 50 episodes, we are actually using 50 times 25 (episode length), 1250 time steps to train an agent.
+
+\textbf{Gamma.} It is the discount factor which models the future rewards as a fraction of the immediate rewards. It quantifies how much importance we give for future rewards.
+
+\textbf{Learning rate.} Learning rate specifies the magnitude of step that is taken towards the solution. 
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{Parameters used for training MADDPG}
+    \label{tab:basecase_parameters}
+    \begin{tabular} {|l|l|} % <-- Changed to S here.
+      \hline
+      \textbf{Metric} & \textbf{Value} \\
+      \hline
+      Number of hidden layers & 2 \\
+      Number of hidden units per layer & 128 \\
+      Episode length (steps) & 25 \\
+      Batch size (episodes) & 50 \\
+      Total number of episodes & 60000 \\
+      Gamma, $\gamma$ & 0.95 \\
+      Learning Rate, $\alpha$ & 0.01 \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 \begin{figure}
 \begin{center}
@@ -190,9 +216,9 @@ Besides the metrics defined above, each experiment may additional context-specif
 \label{fig:MADDPGvsPG_distance}
 \end{figure}
 
-\textbf{REINFORCE and MADDPG.} As shown in Figure \ref{fig:MADDPGvsPG} and Figure \ref{fig:MADDPGvsPG_distance}, REINFORCE has difficulties learning a good policy as the world keeps changing from each agent's perspective. If other agents make a wrong move, it would reflect badly on this agent even though it might have picked a good action. In other words, the feedback signal is erroneous. Whereas with MADDPG, the centralized critic function takes into consideration other agents' observations and moves, so that the network could more accurately attribute rewards and penalties.  
+\textbf{REINFORCE and MADDPG.} As the baseline we compare the performance of REINFORCE and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters} except that the batch size is 1024 episodes (1024*25 steps) as given in the \cite{maddpg} paper. As shown in Figure \ref{fig:MADDPGvsPG} and Figure \ref{fig:MADDPGvsPG_distance}, REINFORCE has difficulties learning a good policy as the world keeps changing from each agent's perspective. If other agents make a wrong move, it would reflect badly on this agent even though it might have picked a good action. In other words, the feedback signal is erroneous. Whereas with MADDPG, the centralized critic function takes into consideration other agents' observations and moves, so that the network could more accurately attribute rewards and penalties.  
 
-\textbf{Exploration strategies.} We experiment with 3 different ways of action exploration. First, we try re-implementing what Open AI does, which adds noise onto unnormalized policy network output, and then takes softmax to get the final action. We also try using Ornstein-Uhlenbeck process, with $\sigma = 0.3, \theta = 0.15$. Lastly, we experiment sampling from multivariate normal distribution with a trainable standard deviation. 
+\textbf{Exploration strategies.} We experiment with 3 different ways of action exploration. First, we try re-implementing what Open AI does, which adds noise onto unnormalized policy network output, and then takes softmax to get the final action. We also try using Ornstein-Uhlenbeck process, with $\sigma = 0.3, \theta = 0.15$. Lastly, we experiment sampling from multivariate normal distribution with a trainable standard deviation. Figure \ref{fig:defaultVSouVSdist} shows the plot for average rewards with different action exploration strategies.
 
 \begin{figure}
 \begin{center}
@@ -202,7 +228,7 @@ Besides the metrics defined above, each experiment may additional context-specif
 \label{fig:defaultVSouVSdist}
 \end{figure}
 
-We found that applying noise to unnormalized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches. They suggest 
+We found that applying noise to unnormalized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches.
 
 \begin{figure}
 \begin{center}
@@ -234,10 +260,10 @@ Figures X,Y,and Z show our initial results from training with different policy n
 \textbf{Increased number of agents and landmarks.} Figure \ref{fig:avg_reward_multiple_agents} show the results from training different number of agents using MADDPG. For each result, the number of agents is equal to the number of landmarks. For smaller number of agents the average rewards increases with training whereas for even 1 or 2 more agents in the scenario, the training is not good enough. This can be attributed to the increased information from agents and increased complexity of environment due to more number of landmarks. Depending on the location of landmarks, the agents may or may not learn the policy for achieving the goal.   
 
 \section{Conclusion}
-We introduce the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implement a policy gradients as a baseline and also MADDPG, an algorithm designed for multi-agent scenarios, and apply them to the OpenAI cooperative navigation environment. 
+We introduced the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implemented a policy gradient method as a baseline and MADDPG, an algorithm designed for multi-agent scenarios, and applied them to the OpenAI cooperative navigation environment. We varied hyperparameters, changed the environment settings, applied different noise inputs and analysed the performance of MADDPG for different cases. 
 
 \section{Future Work}
-As future work, we would like try our approach on other multi-agent environments, in particular adversarial ones, to compare how MADDPG performs vs. policy gradients. It would also be interesting to explore how performance changes if agents are trained using different policies - e.g. in an adversarial game, what would happen if one set of agents were trained with MADDPG and a competing set were trained with policy gradients.
+We would like to try our approach on other multi-agent environments, in particular adversarial ones, to compare how MADDPG performs vs. policy gradients. It would also be interesting to explore how performance changes if agents are trained using different policies - e.g. in an adversarial game, what would happen if one set of agents were trained with MADDPG and a competing set were trained with policy gradients.
 
 Additionally, we would like to explore alternative forms of generalization as we feel this is key to supporting. Instead of $Q^\pi_i$ looking at the $K$ nearest neighbors to agent $i$ for some fixed $K$, the Q-function could instead look at all neighbors within a particular distance to agent $i$. This way, the agents would have more information available to them when it is particularly important (the closer agents are to each other, the more likely it is to have a collision) while minimizing input space size when information about additional agents is less necessary.
 
