@@ -156,7 +156,14 @@ In addition to implementing MADDPG as described in the previous section, we furt
 \section{Experiments and Results}
 \subsection{Evaluation Metrics}
 
-In order to evaluate the performance of our algorithms, every 250 training steps we run 40 episodes using the latest learned policies and calculate various metrics over them. Our primary evaluation metric is average episode reward, which we define as the sum of agent rewards at each timestep. Episode reward is composed of both the distance between agents and landmarks as well as the number of collisions, so we look at these metrics as well.
+In order to evaluate the performance of our algorithms, every 250 training steps we do evaluation by running 40 episodes using the latest learned policies and calculate various metrics over them. Our primary evaluation metric for all experiments is average reward, which in this environment corresponds to the distance between agents and the target landmarks while also accounting for collisions that occur along the way. In addition to average reward, we also look at average distance between landmarks and agents, for more intuitive interpretation of the performance. Here we provide a detailed definition of average reward and average distance used in this paper, unless specified otherwise.
+
+\textbf{Average reward.} Average reward is calculated by summing up rewards received from all agents, all timesteps within an episode, and then averaging across multiple episodes. Average rewards shown in plots are computed during dedicated evaluation runs whose data do not go into training set. The range of average reward is zero to negative infinity. 
+
+\textbf{Average distance.} Average distance is the sum of distances between each agent and its closest landmark, across all agents and all timesteps within an episode, and then averaged across episodes.
+
+Besides the metrics defined above, each experiment may additional context-specific evaluation metric, which will be defined for that experiment.
+
 
 \subsection{Experiments}
 
@@ -181,6 +188,35 @@ In order to evaluate the performance of our algorithms, every 250 training steps
 \end{figure}
 
 \textbf{REINFORCE and MADDPG.} As shown in Figure \ref{fig:MADDPGvsPG} and Figure \ref{fig:MADDPGvsPG_distance}, REINFORCE has difficulties learning a good policy as the world keeps changing from each agent's perspective. If other agents make a wrong move, it would reflect badly on this agent even though it might have picked a good action. In other words, the feedback signal is erroneous. Whereas with MADDPG, the centralized critic function takes into consideration other agents' observations and moves, so that the network could more accurately attribute rewards and penalties.  
+
+\textbf{Exploration strategies.} We experiment with 3 different ways of action exploration. First, we try re-implementing what Open AI does, which adds noise onto unnormalized policy network output, and then takes softmax to get the final action. We also try using Ornstein-Uhlenbeck process, with $\sigma = 0.3, \theta = 0.15$. Lastly, we experiment sampling from multivariate normal distribution with a trainable standard deviation. 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.4]{defaultVSouVSdist}
+\end{center}
+\caption{Average reward gained by using different exploration strategies.}
+\label{fig:defaultVSouVSdist}
+\end{figure}
+
+We found that applying noise to unnormaized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches. They suggest 
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.4]{action_exploration_range}
+\end{center}
+\caption{Average reward gained by using different exploration strategies.}
+\label{fig:action_exploration_range}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.4]{action_exploration_std_dev}
+\end{center}
+\caption{Average reward gained by using different exploration strategies.}
+\label{fig:action_exploration_std_dev}
+\end{figure}
+
 
 Figures X,Y,and Z show our initial results from training with different policy network sizes. We can see that although there is a significant improvement in average reward from the start of training, the average reward is still well below 0, indicating that the agents are not able to find an optimal strategy to cooperate and cover all of the target landmarks. This result is to be expected as policy gradient will be very unstable due to the non-stationary environment from the point of view of any given agent during training. When we increased the number of layers and units per layer we saw the network reach convergence quicker, but it was still not able to improve substantially, indicating that the algorithm itself could be a bottleneck on performance as opposed to the size of the policy networks.
 
