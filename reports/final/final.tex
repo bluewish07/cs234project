@@ -156,6 +156,9 @@ By incorporating the actions of all agents into the action-value function during
 \subsection{More scalable MADDPG}
 In addition to implementing MADDPG as described in the previous section, we further modify it to scale to better support large numbers of agents. The Q function described above increases linearly in input size as more agents are added to the scenario, as it has to take every agent's observation and action as an input. In order to reduce the additional computation time needed as $N$ grows, we modify MADDPG to only look at the $K$ nearest neighbors during training, where $K < N-1$. The mathematical formulation of the algorithm remains the same, but the inputs to $Q^\pi_i$ vary based on which agents are closest to $i$ at each timestep.
 
+\subsection{Ornstein–Uhlenbeck noise process}
+One of the exploration methods we have tried in our experiments, presented in the next section, is the Ornstein–Uhlenbeck(OU) noise process. It is the correlated additive Gaussian action space noise. The idea behind using this noise process is that if the noise generated at a given time step is correlated to previous noise, it will tend to stay in the same direction for longer durations instead of immediately cancelling itself out, which will consequently allow the agent to go towards the goal faster. So in the case of continuous actions it is better to have temporally correlated exploration that suit the dynamics to get smoother transitions. This noise process is popularly used with DDPG and we wanted to check if MADDPG can perform better with this exploration choice.
+
 \section{Experiments and Results}
 \subsection{Evaluation Metrics}
 
@@ -228,7 +231,9 @@ The hyperparameters for the experiments described in this section follow the val
 \label{fig:defaultVSouVSdist}
 \end{figure}
 
-We found that applying noise to unnormalized policy network output outperforms other strategies. Therefore we use that as our default exploration when conducting other experiments. To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches.
+We found that applying noise to unnormalized policy network output outperforms other strategies. This finding corroborates the inference mentioned in \cite{plappert2017parameter} and can be extended to our experiments as well. The inference is that since the reward function is well-shaped, we do not need a lot of exploration for the cooperative navigation environment we have chosen. Therefore we use that as our default exploration when conducting other experiments. 
+
+To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches.
 
 \begin{figure}
 \begin{center}

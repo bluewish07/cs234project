@@ -63,6 +63,115 @@ volume = {27(01):1–31},
 year = {2012}
 }
 
+@misc{claus1998dynamics,
+  title={The dynamics of reinforcement learning in cooperative multiagent systems},
+  author={Claus, Caroline and Boutilier, Craig},
+  year={1998}
+}
+
+@article{sandholm1996,
+title = "Multiagent reinforcement learning in the Iterated Prisoner's Dilemma",
+journal = "Biosystems",
+volume = "37",
+number = "1",
+pages = "147 - 166",
+year = "1996",
+issn = "0303-2647",
+doi = "https://doi.org/10.1016/0303-2647(95)01551-5",
+url = "http://www.sciencedirect.com/science/article/pii/0303264795015515",
+author = "Tuomas W. Sandholm and Robert H. Crites",
+keywords = "Multiagent learning, Reinforcement learning, Machine learning, Prisoner's Dilemma, Recurrent neural network, Exploration"
+}
+
+@Article{buffet2007,
+author="Buffet, Olivier
+and Dutech, Alain
+and Charpillet, Fran{\c{c}}ois",
+title="Shaping multi-agent systems with gradient reinforcement learning",
+journal="Autonomous Agents and Multi-Agent Systems",
+year="2007",
+month="Oct",
+day="01",
+volume="15",
+number="2",
+pages="197--220",
+abstract="An original reinforcement learning (RL) methodology is proposed for the design of multi-agent systems. In the realistic setting of situated agents with local perception, the task of automatically building a coordinated system is of crucial importance. To that end, we design simple reactive agents in a decentralized way as independent learners. But to cope with the difficulties inherent to RL used in that framework, we have developed an incremental learning algorithm where agents face a sequence of progressively more complex tasks. We illustrate this general framework by computer experiments where agents have to coordinate to reach a global goal.",
+issn="1573-7454",
+doi="10.1007/s10458-006-9010-5",
+url="https://doi.org/10.1007/s10458-006-9010-5"
+}
+
+
+@article{busoniu2008comprehensive,
+  title={A comprehensive survey of multiagent reinforcement learning},
+  author={Busoniu, Lucian and Babuska, Robert and De Schutter, Bart},
+  journal={IEEE Trans. Systems, Man, and Cybernetics, Part C},
+  volume={38},
+  number={2},
+  pages={156--172},
+  year={2008}
+}
+
+@incollection{bucsoniu2010multi,
+  title={Multi-agent reinforcement learning: An overview},
+  author={Bu{\c{s}}oniu, Lucian and Babu{\v{s}}ka, Robert and De Schutter, Bart},
+  booktitle={Innovations in multi-agent systems and applications-1},
+  pages={183--221},
+  year={2010},
+  publisher={Springer}
+}
+
+@article{lillicrap2015continuous,
+  title={Continuous control with deep reinforcement learning},
+  author={Lillicrap, Timothy P and Hunt, Jonathan J and Pritzel, Alexander and Heess, Nicolas and Erez, Tom and Tassa, Yuval and Silver, David and Wierstra, Daan},
+  journal={arXiv preprint arXiv:1509.02971},
+  year={2015}
+}
+
+@Book{suttonbarto1998rl,
+  author =       "R. S. Sutton and A. G. Barto",
+  title =        "Reinforcement Learning: An Introduction",
+  publisher =    "MIT press Cambridge",
+  edition =      "Volume 1",
+  year =         "1998"
+}
+
+@inproceedings{boutilier1996planning,
+  title={Planning, learning and coordination in multiagent decision processes},
+  author={Boutilier, Craig},
+  booktitle={Proceedings of the 6th conference on Theoretical aspects of rationality and knowledge},
+  pages={195--210},
+  year={1996},
+  organization={Morgan Kaufmann Publishers Inc.}
+}
+
+@inproceedings{chalkiadakis2003coordination,
+  title={Coordination in multiagent reinforcement learning: A Bayesian approach},
+  author={Chalkiadakis, Georgios and Boutilier, Craig},
+  booktitle={Proceedings of the second international joint conference on Autonomous agents and multiagent systems},
+  pages={709--716},
+  year={2003},
+  organization={ACM}
+}
+
+@article{panait2005cooperative,
+  title={Cooperative multi-agent learning: The state of the art},
+  author={Panait, Liviu and Luke, Sean},
+  journal={Autonomous agents and multi-agent systems},
+  volume={11},
+  number={3},
+  pages={387--434},
+  year={2005},
+  publisher={Kluwer Academic Publishers}
+}
+
+@article{plappert2017parameter,
+  title={Parameter space noise for exploration},
+  author={Plappert, Matthias and Houthooft, Rein and Dhariwal, Prafulla and Sidor, Szymon and Chen, Richard Y and Chen, Xi and Asfour, Tamim and Abbeel, Pieter and Andrychowicz, Marcin},
+  journal={arXiv preprint arXiv:1706.01905},
+  year={2017}
+}
+
 @TechReport{mitchell80,
   author = 	 "T. M. Mitchell",
   title = 	 "The Need for Biases in Learning Generalizations",
