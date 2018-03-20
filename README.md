@@ -17,7 +17,9 @@ This repository contains the code used in our CS234 Winter 2018 class project, w
 - `./utils/`: various utility functions we wrote to run the multi-agent scenarios
     
 ## Getting started:
-- Known dependencies: OpenAI gym, numpy, OpenAI multi-agent-envs
+- Known dependencies: tensorflow, OpenAI gym, numpy, OpenAI multi-agent-envs(https://github.com/openai/multiagent-particle-envs)
+
+- ensure OpenAI multi-agent-envs is cloned to the root directory of this project
 
 - simply run `python main.py` to begin running with our default settings.
 
