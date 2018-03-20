@@ -12,10 +12,7 @@ class config():
     render = False # True
 
     # output config
-    output_path  = "results/" + env_name + "/" + algo_name + "/"
-    output_path  = "results/" + env_name + "/" + algo_name + "-3agents-1neighbor/"
-    #output_path  = "results/" + env_name + "/" + algo_name + "-4agents/"
-    
+    output_path  = "results/" + env_name + "/" + algo_name + "/"    
     
     model_output = output_path + "model.weights/"
     log_path     = output_path + "log.txt"
@@ -61,7 +58,7 @@ class config():
     run_evaluation_with_noise = True
 
     neighbors_critic = False # if true, each agent's critic only has info about nearby agents
-    critic_size = 2 # of agents to store in the critic (equals 1 + number of nearest neighbors)
+    critic_size = 3 # of agents to store in the critic (equals 1 + number of nearest neighbors)
 
     # since we start new episodes for each batch
     assert max_ep_len <= batch_size

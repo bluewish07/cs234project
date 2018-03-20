@@ -401,6 +401,8 @@ class DDPGActorCritic(object):
       Output:
       state_out: (batch_size, agent (self + neighbors), obs_dim)
       next_state_out: (batch_size, agent (self + neighbors), obs_dim)
+      actions_out: (batch_size, agent (self + neighbors), action_dim)
+      est-next_a_out: (batch_size, agent (self + neighbors), action_dim)
       
       in both state_out and next_state_out, the first agent will always be self (i.e. ths agent)
       """
@@ -410,35 +412,29 @@ class DDPGActorCritic(object):
       actions_out = []
       est_next_a_out = []
       
-      # NV TODO this should be vectorized so it runs faster - don't loop over everything
-      for i in range(self.config.batch_size):
-        dists_obs = []
-        dists_next = []
-        this_pos = state[i, self.agent_idx, 2:4]
-        this_pos_next = state_next[i, self.agent_idx, 2:4]
-        for j in range (self.env.n):
-          other_pos = state[i, j, 2:4]
-          other_pos_next = state_next[i, j, 2:4]
-          dist_obs = np.sum(np.square(this_pos - other_pos))
-          dist_next = np.sum(np.square(this_pos_next - other_pos_next))
-          dists_obs.append(dist_obs)
-          dists_next.append(dist_next)
-        dists_obs = np.array(dists_obs)
-        dists_next = np.array(dists_next)
-        idx_obs = dists_obs.argsort()[:self.critic_size]
-        idx_next = dists_next.argsort()[:self.critic_size]
-          
-        timestep = [state[i, j, :] for j in idx_obs]
-        action = [true_actions[i, j, :] for j in idx_obs]
-        timestep_next = [state_next[i, j, :] for j in idx_next]
-        est_next_a = [est_next_actions[i,j,:] for j in idx_next]
-          
-        state_out.append(timestep)
-        actions_out.append(action)
-        state_next_out.append(timestep_next)
-        est_next_a_out.append(est_next_a)
-        
-                    
+      this_pos = np.array(state[:, self.agent_idx, 2:4])
+      this_pos = this_pos[:, np.newaxis, :]  # batch, 1, 2
+      this_pos_next = np.array(state_next[:, self.agent_idx, 2:4])
+      this_pos_next = this_pos_next[:, np.newaxis, :]  # batch, 1, 2
+      
+      other_pos = np.array(state[:, :, 2:4])
+      other_pos_next = np.array(state_next[:, :, 2:4])
+      
+      dists_obs = np.sum(np.square(other_pos - this_pos), axis=2) # batch, num_agents
+      dists_next = np.sum(np.square(other_pos_next - this_pos_next), axis=2) # batch, num_agents
+      
+      idx_obs = dists_obs.argsort(axis=1)[:, :self.critic_size]
+      idx_next = dists_next.argsort(axis=1)[:, :self.critic_size]
+      
+      state_out = state[np.arange(self.config.batch_size), idx_obs.transpose(), :]   
+      state_out = state_out.swapaxes(0,1)
+      state_next_out = state_next[np.arange(self.config.batch_size), idx_obs.transpose(), :]   
+      state_next_out = state_next_out.swapaxes(0,1)
+      actions_out = true_actions[np.arange(self.config.batch_size), idx_obs.transpose(), :]   
+      actions_out = actions_out.swapaxes(0,1)
+      est_next_a_out = est_next_actions[np.arange(self.config.batch_size), idx_obs.transpose(), :]   
+      est_next_a_out = est_next_a_out.swapaxes(0,1)
+      
       return (state_out, state_next_out, actions_out, est_next_a_out)
       
     
