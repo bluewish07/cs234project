@@ -95,7 +95,6 @@ Multi-agent scenarios frequently come up in the real world but traditional reinf
 Our results confirm that MADDPG performs significantly better than a single-agent policy gradient approach. Additionally, we show that our strategy to allow MADDPG to better scale to larger numbers of agents does not cause it to perform significantly worse, indicating that it could be a better strategy than the vanilla algorithm.
 \end{abstract}
 
-
 \section{Introduction}
 \label{submission}
 
@@ -237,8 +236,6 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 
 \textbf{Baseline comparison.} As a baseline, we compare the performance of our single-agent policy gradient baseline and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters}. As shown in figures \ref{fig:MADDPGvsPG} and \ref{fig:MADDPGvsPG_distance}, the policy gradient approach has difficulties learning a good policy. It fails to both increase reward and decrease distance to landmarks while training, and produces extremely noisy results. In contrast, MADDPG's performance across both metrics steadily improves as training progresses and it exhibits much less variation in results, indicating that training is more stable. We believe MADDPG's good performance comes from the fact that it uses a centralized critic function and that we can use experience replay with it.
 
-\textbf{Batch size comparison.} Next, we examine the effect of training batch size on MADDPG performance. In addition to the default of 1,250 timesteps, we also explored using 6,250 and 25,600 timesteps per training batch. Our hypothesis was that increasing training batch size (but still performing the same number of training batches) would improve performance, as incorporating more training timesteps into each update makes it more likely that the resulting gradient is in the right direction. Figure \ref{fig:batch_size} shows our results and it does not appear that increasing batch size results in better performance in our runs. As a result of this experiment, we use a batch size of 1,250 timesteps for our other experiments as it takes the least amount of time to run.
-
 \begin{figure}
 \begin{center}
 \includegraphics[scale=0.35]{MADDPGvsPG}
@@ -251,9 +248,11 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 \begin{center}
 \includegraphics[scale=0.35]{MADDPGvsPG_distance}
 \end{center}
-\caption{Average distance from landmarks with Naive PG algorithm and MADDPG algorithm.}
+\caption{Average distance from landmarks with naive PG algorithm and MADDPG algorithm.}
 \label{fig:MADDPGvsPG_distance}
 \end{figure}
+
+\textbf{Batch size comparison.} Next, we examine the effect of training batch size on MADDPG performance. In addition to the default of 1,250 timesteps, we also explored using 6,250 and 25,600 timesteps per training batch. Our hypothesis was that increasing training batch size (but still performing the same number of training batches) would improve performance, as incorporating more training timesteps into each update makes it more likely that the resulting gradient is in the right direction. Figure \ref{fig:batch_size} shows our results and it does not appear that increasing batch size results in better performance in our runs. As a result of this experiment, we use a batch size of 1,250 timesteps for our other experiments as it takes the least amount of time to run.
 
 \begin{figure}
 \begin{center}
@@ -263,9 +262,9 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 \label{fig:batch_size}
 \end{figure}
 
-\textbf{Action exploration strategies.} Action exploration and balancing it with exploitation is a critical part of determining optimal parameters. \cite{maddpg} performs action exploration by adding noise to the unnormalized policy network output when sampling actions and then applying a softmax function to obtain the final action. This approach seems unintuitive to us and the rational for it is not mentioned in the paper, so we experiment with this and other approaches to better understand performance.
+\textbf{Adjusting network output for action exploration.} Action exploration and balancing it with exploitation is a critical part of determining optimal parameters. \cite{maddpg} performs action exploration by adding noise to the unnormalized policy network output when sampling actions and then applying a softmax function to obtain the final action. This approach seems unintuitive to us and the rational for it is not mentioned in the paper, so we experiment with this and other approaches to better understand performance.
 
-In addition to implementing the MADDPG action exploration methodology, we also try applying an Ornstein-Uhlenbeck process with $\sigma = 0.3, \theta = 0.15$ and sampling from multivariate normal distribution with a trainable standard deviation. Figure \ref{fig:defaultVSouVSdist} shows the average rewards with different action exploration strategies. We see that the original MADDPG action exploration methodology does best, supporting the findings in \cite{plappert2017parameter} that adding noise directly to the network improves performance. One possible reason for is this is that because the reward function is well-shaped and reward is given at every timestep, not as much exploration of the action space is needed. 
+In addition to implementing the MADDPG action exploration methodology, we also experimented with applying an Ornstein-Uhlenbeck process with $\sigma = 0.3, \theta = 0.15$ and with sampling from multivariate normal distribution with a trainable standard deviation, using policy network outputs as the means. Figure \ref{fig:defaultVSouVSdist} shows the average rewards with these different action exploration strategies that all operate on the policy network outputs. We see that the original MADDPG action exploration methodology does best, supporting the findings in \cite{plappert2017parameter} that adding noise directly to the network improves performance. One possible reason for is this is that because the reward function is well-shaped and reward is given at every timestep, not as much exploration of the action space is needed. 
 
 We additionally look at the standard deviation of the deviation from the network output caused by the various exploration techniques in figure \ref{fig:action_exploration_std_dev}. We see that the default approach from \cite{maddpg} has the lowest deviation from the network outputs, supporting the theory that not as much exploration is needed. The other two methods we try both perform more exploration and have higher standard deviations, likely leading to lower resulting reward because  limited episode length does not allow much room for mistakes and corrections.
 
@@ -291,51 +290,50 @@ We additionally look at the standard deviation of the deviation from the network
 \begin{center}
 \includegraphics[scale=0.35]{action_exploration_std_dev}
 \end{center}
-\caption{Standard deviation of effective euclidean distance for different exploration strategies.}
+\caption{Standard deviation of effective euclidean distance for different exploration strategies across total timesteps run in the environment.}
 \label{fig:action_exploration_std_dev}
 \end{figure}
 
+\textbf{Parameter space noise for exploration.} The previously discussed explorations all add noise to the outputs of the policy networks to obtain sample actions. We also apply noise directly to the parameters of the policy networks. \cite{plappert2017parameter} presents the idea of adding noise directly to the policy network parameters. In the continuous action space, actions are sampled according to a stochastic policy. For a fixed state $s$, we will most certainly obtain a different action when that state is sampled again since action space noise is independent of the current state $s$. On the other hand, if the network parameters are perturbed at the beginning of each episode, the same action will be taken for the same state $s$. This ensures dependency of actions and state and leads to more consistent policy network outputs within any given episode. We apply layer normalization between policy network hidden layers so that the same perturbation scale can be used across all layers. We have used $\sigma = 0.2$ as the scale for parameter space noise. Figure \ref{fig:parameter_noise_exploration} shows that using parameter noise with MADDPG causes it to outperform the default action exploration scheme. 
+
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{network_parameter_exploration}
+\includegraphics[scale=0.45]{network_parameter_exploration}
 \end{center}
-\caption{Average reward with and without network parameter noise}
+\caption{Average episode reward in the 3-agent scenario with and without network parameter noise.}
 \label{fig:parameter_noise_exploration}
 \end{figure}
 
-\textbf{Parameter space noise for exploration.} Previously, we considered exploration by adding noise to the output action. Then we experimented with adding noise to the parameters of the actor network. \cite{plappert2017parameter} presents the idea of adding noise directly to the agent's parameters. The reasoning behind this is as follows. In the continuous action space, actions are sampled according to a stochastic policy. For a fixed state $s$, we will most certainly obtain a different action when that state is sampled again since action space noise is independent of the current state $s$. On the other hand, if the network parameters are perturbed at the beginning of each episode, the same action will be taken for the same state $s$. This ensures dependency of actions and state, eventually leading to consistency of outputs. We have used layer normalization between hidden layers, so that the same perturbation scale can be used across all layers. We have used $\sigma = 0.2$ as the scale for parameter space noise. Figure \ref{fig:parameter_noise_exploration} shows the default case with default noise and the default case with network parameter noise. As we can see in the plot, the average rewards are much higher with parameter noise compared to the default results.  
-
 
 \textbf{Changing network size.} We experiment with reducing the size of neural network layers for the policy and Q networks to see the impact on performance. We observe that the best achievable reward in a training run with 2-layer 64-unit networks (as opposed to the default of 2 layers with 128-unit networks) is around -175, which is noticeably lower than the -150 achieved with the default network size. This shows that increased complexity of neural networks does help to define the right actions in the cooperative navigation task. 
-
-\begin{figure}
-\begin{center}
-\includegraphics[scale=0.5]{maddpg_3,4,5agents.png}
-\end{center}
-\caption{Average reward gained by each agent in environment with different number of agents and landmarks}
-\label{fig:avg_reward_multiple_agents}
-\end{figure}
 
 \textbf{Increased number of agents and landmarks.} Figure \ref{fig:avg_reward_multiple_agents} show the results from training different number of agents using MADDPG. For each result, the number of agents is equal to the number of landmarks so every agent is still trying to navigate to a different landmark. Here we use average reward per agent to measure performance, which is average reward defined earlier divided by number of agents. As the number of agents increases, we can see that the average episode reward per agent decreases. This shows that training becomes more difficult as the environment space becomes more complex. 
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{MADDPG_different_neighbors.png}
+\includegraphics[scale=0.45]{maddpg_3,4,5agents.png}
 \end{center}
-\caption{Average reward gained by each agent with different number of neighboring agents information}
-\label{fig:avg_reward_different_neighbors}
+\caption{Average reward gained by each agent in environment with different number of agents and landmarks.}
+\label{fig:avg_reward_multiple_agents}
 \end{figure}
-
 
 \textbf{Scaling MADDPG by only using neighboring agents.} Figure \ref{fig:avg_reward_different_neighbors} shows the performance of our modified MADDPG implementation that only uses information from the $K$ nearest neighbors during training, where $K < N-1$. We evaluate our implementation in two different scenarios, one with 3 agents but only using information from 1 neighbor instead of both, and one with 5 agents and using information from 2 neighbors instead of all 4. We compare the performance in these to scenarios with 3 and 5 agents using information from all other agents. The modified MADDPG algorithm performs slightly worse at both 3 and 5 agents, which is expected as less information is used during training. However, we can see that the gap in performance at $N=5$ is smaller than at $N=3$, suggesting the possibility that as $N$ increases further, the gap might continue to remain small.
 
 This hypothesis requires more runs to validate (e.g. running a scenario with 7 agents with and without limited information on neighbors), but suggests that having information on nearest neighbors is the most relevant information to avoiding collisions. As long as an agent moves towards a landmark while also avoiding collisions with its nearest neighbors, it is likely going to increase overall episode reward. Another key advantage of our modified MADDPG implementation is that the Q network has fewer parameters, speeding up training especially as $N$ continues to increase relative to $K$.
 
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.5]{MADDPG_different_neighbors.png}
+\end{center}
+\caption{Average reward for each agent when using different numbers of neighbors in the Q-function.}
+\label{fig:avg_reward_different_neighbors}
+\end{figure}
+
 \section{Conclusion}
 
 We introduce the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implement a single-agent policy gradient method as a baseline and MADDPG, an algorithm designed for multi-agent scenarios, and apply them to the OpenAI cooperative navigation environment. We perform a variety of experiments involving changing hyperparameters, environment settings, and more and analyze the resulting performance. Finally, we modify MADDPG to look at a fixed number of nearest neighbors during training to enable it to scale better to larger numbers of agents.
 
-We show that MADDPG clearly outperforms policy gradient approaches as it is able to steadily improvement performance over training batches while policy gradient fails to improve. Our experiments also show that not much noise on policy network outputs is needed for action exploration in the cooperative navigation scenario. And using parameter space noise exploration can be a better choice for training the agent policy. Increasing batch size beyond 1,250 timesteps does not appear to noticeably impact training performance, while decreasing the policy network and Q-network from 2 layers and 128 units to 2 layers and 64 units does negatively impact training performance.
+We show that MADDPG clearly outperforms policy gradient approaches as it is able to steadily improvement performance over training batches while policy gradient fails to improve. Our experiments also show that applying additional noise on the policy network outputs does not improve training, but applying noise directly to the network weights does improve performance. And using parameter space noise exploration can be a better choice for training the agent policy. Increasing batch size beyond 1,250 timesteps does not appear to noticeably impact training performance, while decreasing the policy network and Q-network from 2 layers and 128 units to 2 layers and 64 units does negatively impact training performance.
 
 As MADDPG is run with more agents, we see that the average reward per agent decreases as a result of the environment becoming more complicated. Running vanilla MADDPG on larger numbers of agents significantly increases computation time due to the increased size of the Q-function's input space, but our modification of MADDPG that only looks at a set number of nearby neighbors does not have this same problem and also performs close to the default runs, indicating that generalizing MADDPG could be a viable way to scale it to support scenarios with more agents.
 
@@ -348,7 +346,7 @@ Our results from generalizing MADDPG to only look at $N$ nearest neighbors show 
 Additionally, we would like to explore alternative forms of generalization. Instead of $Q^\pi_i$ looking at the $K$ nearest neighbors to agent $i$ for some fixed $K$, the Q-function could instead look at all neighbors within a particular distance to agent $i$. This way, the agents would have more information available to them when it is particularly important (the closer agents are to each other, the more likely it is to have a collision) while minimizing input space size when information about additional agents is less necessary.
 
 \section*{Contributions}
-Diana wrote the initial implementation of MADDPG, Shalini wrote our logging/plotting code, and Nitin wrote the initial implementation of the policy gradient baseline. All of us iterated on the code with bugfixes and enhancements and ran experiments using our implementations.
+Diana wrote the initial implementation of MADDPG, Shalini wrote our logging/plotting code, and Nitin wrote the initial implementation of the policy gradient baseline. All of us iterated on the code with bugfixes and enhancements and wrote code to enable and run our many experiments.
 
 \bibliography{final}
 \bibliographystyle{icml2018}
