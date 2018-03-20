@@ -165,11 +165,37 @@ url="https://doi.org/10.1007/s10458-006-9010-5"
   publisher={Kluwer Academic Publishers}
 }
 
+@misc{cooperativeQ,
+	title={An algorithm for distributed reinforcement learning in cooperative multi-agent systems},
+author = {M. Lauer and M. Riedmiller},
+journal={Proceedings of the Seventeenth International Conference on Machine Learning},
+pages = {535–542},
+year = {2000}
+}
+
+@article{coma,
+  title={Counterfactual Multi-Agent Policy Gradients},
+  author={Foerster, Jakob and Farquhar, Gregory and Afouras, Triantafyllos and Nardelli, Nantas and Whiteson, Shimon},
+  journal={arXiv preprint arXiv:1705.08926},
+	year={2017}
+}
+
 @article{plappert2017parameter,
   title={Parameter space noise for exploration},
   author={Plappert, Matthias and Houthooft, Rein and Dhariwal, Prafulla and Sidor, Szymon and Chen, Richard Y and Chen, Xi and Asfour, Tamim and Abbeel, Pieter and Andrychowicz, Marcin},
   journal={arXiv preprint arXiv:1706.01905},
   year={2017}
+}
+
+@article{ou,
+  author={Enrico Bibbona and Gianna Panfilo and Patrizia Tavella},
+  title={The Ornstein–Uhlenbeck process as a model of a low pass filtered white noise},
+  journal={Metrologia},
+  volume={45},
+  number={6},
+  pages={S117},
+  url={http://stacks.iop.org/0026-1394/45/i=6/a=S17},
+  year={2008},
 }
 
 @TechReport{mitchell80,
