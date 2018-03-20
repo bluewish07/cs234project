@@ -109,13 +109,14 @@ class DDPGActorCritic(object):
         See section 4.2 Inferring Policies of Other Agents for loss function and other info
         :return: None
         """
-        self.policy_approx_networks_losses = [None] * self.env.n
+        policy_approx_networks_losses = []
         self.policy_approx_grad_norms = [None] * self.env.n
 
         update_ops = []
         for i in range(self.env.n):
             if i == self.agent_idx:
                 update_ops.append(None)
+                policy_approx_networks_losses.append(None)
                 continue
 
             approx_logits = self.policy_approximate_logits[i]
@@ -128,7 +129,8 @@ class DDPGActorCritic(object):
             dist = tf.contrib.distributions.Categorical(logits=approx_logits)
             logits_entropy = dist.entropy()
             loss = -tf.reduce_mean(logprob + self.config.policy_approx_lambda * logits_entropy)
-            self.policy_approx_networks_losses[i] = tf.Print(loss, [loss], message="agent_"+str(i)+" loss:")
+            print_loss = tf.Print(loss, [loss], message="agent_"+str(i)+" loss:")
+            policy_approx_networks_losses.append(print_loss)
             optimizer = tf.train.AdamOptimizer(self.lr)
             combined_scope = self.agent_scope + "/" + self.policy_approx_networks_scope + "/" + "agent_" + str(i)
             vars_in_scope = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, combined_scope)
@@ -143,6 +145,7 @@ class DDPGActorCritic(object):
 
             update_ops.append(update)
 
+        self.policy_approx_networks_losses = policy_approx_networks_losses
         self.update_policy_approx_networks_op = update_ops
 
 
@@ -217,14 +220,14 @@ class DDPGActorCritic(object):
                                                                    message="action logits")
                 self.target_mu_noise = tf.nn.softmax(self.target_mu - tf.log(-tf.log(tf.random_uniform(tf.shape(self.target_mu)))), axis=-1)
             elif self.config.random_process_exploration == 1:
-                self.mu_noise = self.mu_normalized
-                self.target_mu_noise = self.target_mu_normalized
+                self.mu_noise = self.mu_normalized + self.noise()
+                self.target_mu_noise = self.target_mu_normalized + self.noise()
             elif self.config.random_process_exploration == 2:
                 log_std = tf.get_variable("random_process_log_std", shape=[self.action_dim], dtype=tf.float32)
                 std = tf.exp(log_std)
                 dist = tf.contrib.distributions.MultivariateNormalDiag(self.mu_normalized, std)
                 self.mu_noise = dist.sample()
-                self.target_mu_noise = self.target_mu_normalized
+                self.target_mu_noise = tf.contrib.distributions.MultivariateNormalDiag(self.target_mu_normalized, std).sample()
 
 
 
@@ -382,7 +385,7 @@ class DDPGActorCritic(object):
             loss = self.policy_approx_networks_losses[i]
             grad_norm = self.policy_approx_grad_norms[i]
             ops_to_run = [update_approx_network]
-            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss, grad_norm]
+            if self.config.approx_debugging and self.t % self.config.eval_freq == 0: ops_to_run += [loss]
             self.sess.run(ops_to_run,
                           feed_dict={self.action_placeholder : act,
                                 self.observation_placeholder : obs})

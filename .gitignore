@@ -14,3 +14,17 @@ reports/milestone/*.synctex.gz
 reports/milestone/*.fls
 .env/*
 .en/*
+*.aux
+*.bbl
+*.blg
+*.log
+*.synctex
+*.aux
+*.log
+*.synctex
+reports/final/final.aux
+reports/final/final.bib
+reports/final/final.blg
+reports/final/final.log
+reports/final/final.synctex.gz
+reports/final/final.aux
