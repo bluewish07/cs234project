@@ -105,11 +105,13 @@ Traditional reinforcement learning approaches focus on training a single agent a
 
 Research into multi-agent reinforcement learning has attempted to develop new approaches specifically for multi-agent scenarios. One such recently developed algorithm is multi-agent deep deterministic policy gradients algorithm (MADDPG), which obtains significantly improved results over other approaches by modifying DDPG to train agents while incorporating information from other agents \cite{maddpg}.
 
+We replicate the MADDPG algorithm and apply it to an OpenAI cooperative navigation environment, where agents must learn to each navigate to a different fixed landmark without colliding. We experiment with various hyperparameters and exploration vs. exploitation methodologies to show how MADDPG's performance is affected by them. We also generalize MADDPG to handle larger numbers of agents and explore how performance changes accordingly.
+
 Our paper has 3 key contributions:
 \begin{itemize}[nosep]
 \item We replicate the MADDPG algorithm and apply it to the OpenAI cooperative navigation environment
 \item We experiment with various hyperparameters to show how MADDPG's performance is affected by them
-\item We extend MADDPG to handle larger numbers of agents efficiently and explore how performance changes with the modified algorithm
+\item We modify MADDPG to handle larger numbers of agents and explore how performance changes with the modified algorithm
 \end{itemize}
 
 \section{Related Work}
@@ -145,12 +147,10 @@ We define an episode to be 25 timesteps in length as there is no defined termina
 \caption{Cooperative navigation environment. Agents must learn to each navigate to a different landmark without colliding.}
 \end{figure}
 
-\subsection{Single-agent Policy Gradient}
-We implement a vanilla single-agent policy gradient algorithm as a baseline. Policy gradient algorithms seek to determine the optimal policy by directly adjusting the parameters $\theta$ of a policy $\pi_\theta$ in order to maximize the objective function $J(\theta) = \mathbb{E}_{\pi_\theta}[R]$. We also implemented a baseline and advantage for the policy gradientas these can help reduce variance and increase stability.
-
-Letting $\hat{A} = R_t - b(s_t)$ be the advantage estimate at time t, we can write the gradient of the policy as:
-$$\nabla_\theta J(\theta) = \mathbb{E}_{s,\pi_\theta}[\nabla_\theta log \pi_\theta(a_t|s_t)\hat{A_t}]$$
-In the above equation, the expectation is taken over many sample trajectories through the environment using $\pi_\theta$. The main downside of single-agent policy gradient algorithms is that they are already susceptible to  high variance and executing them in a multi-agent environments only amplifies the problem. From a single agent's perspective not only does the world change as other agents move, but the policies other agents follow change as well. Additionally, an agents might not get the correct gradient signal if for example it took a good action but other agents took bad actions, leading to overall decrease in reward. In this case, the policy gradient could cause the agent to move away from taking the good action.
+\subsection{Policy Gradient}
+We implement a policy gradient algorithm as a baseline. Policy gradient algorithms seek to determine the optimal policy by directly adjusting the parameters $\theta$ of a policy $\pi_\theta$ in order to maximize the objective function $J*(\theta) = \mathbb{E}_{\pi_\theta}[R]$. We also implemented a baseline and advantage for the policy gradient. Letting $\hat{A} = R_t - b(s_t)$ be the advantage estimate at time t, we can write the gradient of the policy as:
+$$\nabla_\theta J(\theta) = \mathbb{E}_{s,\pi_\theta}[\nabla_\theta log \pi_\theta(a|s)\hat{A}]$$
+In the above equation, the expectation is taken over many sample trajectories through the environment using $\pi_\theta$. Policy gradient algorithms are already susceptible to  high variance, and executing them in a multi-agent environments only amplifies the problem. From a single agent's perspective not only does the world change as other agents move, but the policies other agents follow change as well. Additionally, individual agents might not always get the correct gradient signal as an agent could take a good action but if other agents took bad actions, leading to overall decrease in reward, the gradient for the agent taking the correct action could still be negative.
 
 \subsection{MADDPG}
 
@@ -164,20 +164,20 @@ In the above equation, the expectation is taken over many sample trajectories th
 
 We recreate MADDPG as our main algorithm for the cooperative navigation task ~\cite{maddpg}.  MADDPG takes DDPG and tailors it to multi-agent environmnnts, resulting in significantly better performance than single-agent methods. MADDPG trains separate policy networks for every agent, but uses a centralized action-value function that incorporates information across all agents to ensure a more stable learning process. 
 
-Consider a game with $N$ agents, and let $\pi = \{\pi_1, ..., \pi_N\}$ be the associated set of agent policies that are parametrized by $\theta_1, ..., \theta_N$. Additionally let $s = \{s_1, ..., s_N\}$ represent the set of individual agent observations. When using MADDPG to train agents, every agent additionally maintains a critic function that outputs a Q-value given the states and actions of all agents (see Figure \ref{fig:diagram}):
+Consider a game with $N$ agents, and let $\pi = \{\pi_1, ..., \pi_N\}$ be the associated set of agent policies that are parametrized by $\theta_1, ..., \theta_N$. Additionally let $s = \{s_1, ..., s_N\}$ represent the set of states observed by each agent. When using MADDPG to train agents, every agent additionally maintains a critic function that outputs a Q-value given the states and actions of all agents (see Figure \ref{fig:diagram}):
 $$Q^\pi_i(s, a_1, ..., a_N)$$
-Standard Q-learning techniques are used to update the critic function. Note that for the cooperative navigation environment that we use for our experiments, the Q-values will be the same for all agents as the reward for all agents is the same. However, this Q-function formulation where every agent learns its own $Q^\pi_i$ allows MADDPG to generalize to environments where agents have different reward functions (e.g. adversarial games).
+Standard Q-learning techniques are used to update the critic function. Note that for the cooperative navigation environment that we run our experiments on, the Q-values will be the same for all agents as the reward for all agents is the same. However, this Q-function formulation where every agent learns its own $Q^\pi_i$ allows MADDPG to generalize to environments where agents have different reward functions (e.g. adversarial games).
 
 During training, agents now have information not just about the locations of other agents, but about the actions they will take as well. Therefore, the environment is stationary for any agent as it does not depend on other agent policies:
 $$P(s_i'|s_i, a_1, ..., a_N, \pi_1, ..., \pi_N) = P(s_i'|s_i, a_1, ..., a_N)$$
-The policy network updates for an agent are determined by maximizing the agents centralized Q-values. Therefore, gradient update is similar to the update used in the vanilla policy gradient except that it uses the centralized Q-value instead of only looking at the returns across trajectories:
-$$\nabla_{\theta_i}J(\theta_i) = \mathbb{E}_{s, \pi_i}[\nabla_{\theta_i}log \pi_i(a_i|s_i)Q^{\pi}_i(s, a_1, ..., a_N)]$$
-By incorporating the actions of all agents into the action-value function during training instead of only the action of an individual agent, MADDPG produces better and more stable results than traditional policy gradient or Q-learning approaches. An additional advantage of MADDPG is that it supports experience replay. When training, we repeatedly sample from agent policy networks and store the result state transition in an experience replay buffer. Periodically, we update network parameters by sampling from the replay buffer and applying MADDPG to the sampled transitions. We also make use of target policy networks and target Q-networks to further stabilize training.
+The policy network updates for an agent are determined by maximizing the agents centralized Q-values. The gradient update is similar to the update used in the policy gradient, except that it uses the centralized Q-value instead of only looking at the returns across trajectories:
+$$\nabla_{\theta_i}J(\theta_i) = \mathbb{E}_{s, \pi_i}[\nabla_{\theta_i}log \pi_i(a_i|o_i)Q^{\pi}_i(x, a_1, ..., a_N)]$$
+By incorporating the actions of all agents into the action-value function during training instead of only each individual agent, MADDPG produces better and more stable results than traditional policy gradient or Q-learning approaches. An additional advantage of using this extra information during training is that it we can implement and use experience replay as well. When training, we repeatedly sample from agent policy networks and store the result state transition in an experience replay buffer. Periodically, we update network parameters by sampling from the replay buffer and applying MADDPG to the sampled transitions.
 
 During policy execution, agents only use their learned policy networks and therefore do not use any information about other agents; MADDPG is an enhancement to the training process while leaving the execution phase unchanged.
 
-\subsection{Scaling MADDPG by only use neighboring agents}
-In addition to implementing MADDPG as described in the previous section, we modify it to scale to better support large numbers of agents. The Q function described above increases linearly in input size as more agents are added to the scenario, as it has to take every agent's observation and action as an input. In order to reduce the additional computation time needed as $N$ grows, we modify MADDPG to only look at the $K$ nearest neighbors during training, where $K < N-1$. The mathematical formulation of the algorithm remains the same, except that the $Q^\pi_i$ only takes in the states and actions of agent $i$ and its nearest $K$ neighbors.
+\subsection{More scalable MADDPG}
+In addition to implementing MADDPG as described in the previous section, we further modify it to scale to better support large numbers of agents. The Q function described above increases linearly in input size as more agents are added to the scenario, as it has to take every agent's observation and action as an input. In order to reduce the additional computation time needed as $N$ grows, we modify MADDPG to only look at the $K$ nearest neighbors during training, where $K < N-1$. The mathematical formulation of the algorithm remains the same, but the inputs to $Q^\pi_i$ vary based on which agents are closest to $i$ at each timestep.
 
 \subsection{Ornstein-Uhlenbeck action noise}
 One of the exploration methods we have tried in our experiments, presented in the next section, is the Ornstein-Uhlenbeck (OU) noise process \cite{ou}. OU noise is a stochastic process that roughly models Brownian motion, and is also known as the correlated additive Gaussian action space noise. The idea behind using this process is that if the noise generated at a given time step is correlated to previous noise, it will tend to stay in the same direction for longer durations instead of immediately canceling itself out, which will consequently allow the agent to go towards the goal faster. So in the case of continuous actions it is better to have temporally correlated exploration that suit the dynamics to get smoother transitions. This noise process is popularly used with DDPG and we wanted to check if MADDPG can perform better with this exploration choice.
@@ -185,9 +185,9 @@ One of the exploration methods we have tried in our experiments, presented in th
 \section{Experiments and Results}
 \subsection{Evaluation Metrics}
 
-In order to evaluate the performance of our algorithms, every 250 training steps we do a evaluation run of 40 episodes using the latest learned policies and calculate various metrics over them. Data from evaluation runs do not go into training set. Our primary evaluation metric for all experiments is average reward, which corresponds to the distance between agents and the target landmarks while also accounting for collisions that occur along the way. In addition to average reward, we also look at average distance between landmarks and agents, for more intuitive interpretation of the performance. Here we provide a detailed definition of average reward and average distance used in this paper, unless specified otherwise.
+In order to evaluate the performance of our algorithms, every 250 training steps we do evaluation by running 40 episodes using the latest learned policies and calculate various metrics over them. Our primary evaluation metric for all experiments is average reward, which in this environment corresponds to the distance between agents and the target landmarks while also accounting for collisions that occur along the way. In addition to average reward, we also look at average distance between landmarks and agents, for more intuitive interpretation of the performance. Here we provide a detailed definition of average reward and average distance used in this paper, unless specified otherwise.
 
-\textbf{Average reward.} Average reward is calculated by summing up rewards received from all agents, all timesteps within an episode, and then averaging across multiple episodes. The range of average reward is zero to negative infinity. 
+\textbf{Average reward.} Average reward is calculated by summing up rewards received from all agents, all timesteps within an episode, and then averaging across multiple episodes. Average rewards shown in plots are computed during dedicated evaluation runs whose data do not go into training set. The range of average reward is zero to negative infinity. 
 
 \textbf{Average distance.} Average distance is the sum of distances between each agent and its closest landmark, across all agents and all timesteps within an episode, and then averaged across episodes.
 
@@ -230,24 +230,24 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
       \hline
     \end{tabular}
   \end{center}
-	\caption{Default hyperparameters used for training MADDPG.}
+	\caption{Default hyperparameters used for training MADDPG}
 \end{table}
 
 \subsection{Experiments}
 
-\textbf{Baseline comparison.} As a baseline, we compare the performance of our single-agent policy gradient baseline and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters} except with a batch size of 1024 episodes as used in \cite{maddpg}. As shown in Figures \ref{fig:MADDPGvsPG} and \ref{fig:MADDPGvsPG_distance}, the policy gradient approach has difficulties learning a good policy. It fails to improve while training and produces extremely noisy results. In contrast, MADDPG's performance steadily improves as training progresses and it exhibits much less variation in results, indicating that training is more stable. We believe MADDPG's good performance comes from the fact that it uses a centralized critic function and that we can apply experience replay as a result.
+\textbf{Baseline comparison.} As a baseline, we compare the performance of our policy gradient baseline and MADDPG with the baseline hyperparameters as given in Table \ref{tab:basecase_parameters} except with a batch size of 1024 episodes as used in \cite{maddpg}. As shown in Figures \ref{fig:MADDPGvsPG} and \ref{fig:MADDPGvsPG_distance}, the policy gradient approach has difficulties learning a good policy. It fails to improve while training and produces extremely noisy results. In contrast, MADDPG's performance steadily improves as training progresses and it exhibits much less variation in results, indicating that training is more stable. We believe MADDPG's good performance comes from the fact that it uses a centralized critic function and that we can apply experience replay as a result.
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.35]{MADDPGvsPG}
+\includegraphics[scale=0.4]{MADDPGvsPG}
 \end{center}
-\caption{Average episode reward achieved by our naive PG and MADDPG implementations during training.}
+\caption{Average reward achieved by policy gradient algorithm and MADDPG algorithm.}
 \label{fig:MADDPGvsPG}
 \end{figure}
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.35]{MADDPGvsPG_distance}
+\includegraphics[scale=0.4]{MADDPGvsPG_distance}
 \end{center}
 \caption{Average distance from landmarks with Naive PG algorithm and MADDPG algorithm.}
 \label{fig:MADDPGvsPG_distance}
@@ -255,33 +255,32 @@ Table \ref{tab:basecase_parameters} lists the default hyperparameters used in ou
 
 \textbf{Batch size comparison.} \textbf{TODO ONCE WE HAVE THE PLOT}
 
-\textbf{Action exploration strategies.} Action exploration and balancing it vs. exploitation is a critical part of determining optimal parameters. \cite{maddpg} performed exploration by adding noise to the unnormalized policy network output when sampling actions and then applying a softmax function to obtain the final action. This approach seemed unintuitive to us and the rational for it was not mentioned in the paper, so we experiment with this and other approaches to better understand performance.
+\textbf{Exploration strategies.} Next, we experimented experiment with 3 different methods of action exploration. First, we try re-implementing what Open AI does, which adds noise onto unnormalized policy network output, and then takes softmax to get the final action. We also try using Ornstein-Uhlenbeck process, with $\sigma = 0.3, \theta = 0.15$. Lastly, we experiment sampling from multivariate normal distribution with a trainable standard deviation. Figure \ref{fig:defaultVSouVSdist} shows the plot for average rewards with different action exploration strategies.
 
-In addition to re-implementing the MADDPG action exploration methodology, we also apply an Ornstein-Uhlenbeck process with $\sigma = 0.3, \theta = 0.15$ and we try sampling from multivariate normal distribution with a trainable standard deviation. Figure \ref{fig:defaultVSouVSdist} shows the plot for average rewards with different action exploration strategies. We can see that the original MADDPG action exploration methodology does best, supporting the findings in \cite{plappert2017parameter} that adding noise directly to the network improves performance. One possible reason for is this is that because the reward function is well-shaped and reward is given at every timestep, not as much exploration of the action space is needed. 
+We found that applying noise to unnormalized policy network output outperforms other strategies. This finding corroborates the inference mentioned in \cite{plappert2017parameter} and can be extended to our experiments as well. The inference is that since the reward function is well-shaped, we do not need a lot of exploration for the cooperative navigation environment we have chosen. Therefore we use that as our default exploration when conducting other experiments. 
 
-We additionally look at the standard deviation of the deviation from the network output caused by the various exploration techniques in figure \ref{fig:action_exploration_std_dev}. We can see that the default approach from the creators of MADDPG has the lowest deviation from the network outputs, supporting the theory that not as much exploration is needed. The other two methods we tried both performed more exploration and had higher standard deviations, likely leading to lower resulting reward during training.
+To further evaluate, we compare the Euclidean distance between the effective displacement as a result of pre-noise action versus post-noise action. The Euclidean distances are then averaged across every 100 steps (that is the training frequency) across all agents. Figure \ref{fig:action_exploration_range} and \ref{fig:action_exploration_std_dev} plot the range and standard deviation of the average Euclidean distances for the first 15000 batches.
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.35]{defaultVSouVSdist}
+\includegraphics[scale=0.4]{defaultVSouVSdist}
 \end{center}
 \caption{Average reward gained by using different exploration strategies.}
 \label{fig:defaultVSouVSdist}
 \end{figure}
 
-\begin{comment}
+
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.35]{action_exploration_range}
+\includegraphics[scale=0.4]{action_exploration_range}
 \end{center}
 \caption{Range of effective euclidean distance for different exploration strategies.}
 \label{fig:action_exploration_range}
 \end{figure}
-\end{comment}
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.35]{action_exploration_std_dev}
+\includegraphics[scale=0.4]{action_exploration_std_dev}
 \end{center}
 \caption{Standard deviation of effective euclidean distance for different exploration strategies.}
 \label{fig:action_exploration_std_dev}
@@ -307,13 +306,13 @@ We additionally look at the standard deviation of the deviation from the network
 \label{fig:avg_reward_different_neighbors}
 \end{figure}
 
-\textbf{Scaling MADDPG by only using neighboring agents.} Figure \ref{fig:avg_reward_different_neighbors} shows the performance of our modified MADDPG implementation that only uses information from the $K$ nearest neighbors during training, where $K < N-1$. We evaluate our implementation in two different scenarios, one with 3 agents but only using information from 1 neighbor instead of both, and one with 5 agents and using information from 2 neighbors instead of all 4. We compare the performance in these to scenarios with 3 and 5 agents using information from all other agents. The modified MADDPG algorithm performs slightly worse at both 3 and 5 agents, which is expected as less information is used during training. However, we can see that the gap in performance at $N=5$ is smaller than at $N=3$, suggesting the possibility that as $N$ increases further, the gap might continue to remain small.
+\textbf{Scaling MADDPG to only use neighboring agents.} Figure \ref{fig:avg_reward_different_neighbors} shows the performance of our modified MADDPG implementation that only uses information from the $K$ nearest neighbors during training, where $K < N-1$. We evaluated our implementation in two different scenarios, one with 3 agents but only using information from 1 neighbor instead of both, and one with 5 agents and using information from 2 neighbors instead of all 4, and compared the performance in these to scenarios with 3 and 5 agents using information from all other agents. The modified MADDPG algorithm performs slightly worse at both 3 and 5 agents, which is to be expected as less information is used during training. However, we can see that the gap in performance at $N=5$ is small, suggesting the possibility that as $N$ increases further, the gap might continue to remain small. This hypothesis requires more runs to validate (e.g. running a scenario with 7 agents with and without limited information on neighbors), but intuitively makes sense as having information on nearest neighbors is the most relevant information to avoiding collisions. As long as an agent moves towards a landmark while also avoiding collisions with its nearest neighbors, it is likely going to increase overall episode reward.
 
-This hypothesis requires more runs to validate (e.g. running a scenario with 7 agents with and without limited information on neighbors), but suggests that having information on nearest neighbors is the most relevant information to avoiding collisions. As long as an agent moves towards a landmark while also avoiding collisions with its nearest neighbors, it is likely going to increase overall episode reward. Another key advantage of our modified MADDPG implementation is that the Q network has fewer parameters, speeding up training especially as $N$ continues to increase relative to $K$.
+Another advantage of our modified MADDPG implementation is that the Q network has fewer parameters, speeding up training especially as $N$ continues to increase relative to $K$.
 
 \section{Conclusion}
 
-We introduced the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implemented a single-agent policy gradient method as a baseline and MADDPG, an algorithm designed for multi-agent scenarios, and applied them to the OpenAI cooperative navigation environment. We varied hyperparameters, changed the environment settings, applied different noise inputs and analysed the performance of MADDPG for different cases. 
+We introduced the problem of multi-agent reinforcement learning and show why traditional single-agent approaches are ineffective on these problems. We implemented a policy gradient method as a baseline and MADDPG, an algorithm designed for multi-agent scenarios, and applied them to the OpenAI cooperative navigation environment. We varied hyperparameters, changed the environment settings, applied different noise inputs and analysed the performance of MADDPG for different cases. 
 
 We show that MADDPG clearly outperforms policy gradient approaches as it is able to steadily improvement performance over training batches while policy gradient fails to improve. 
 
