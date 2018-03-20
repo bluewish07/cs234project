@@ -295,22 +295,22 @@ We additionally look at the standard deviation of the deviation from the network
 \label{fig:action_exploration_std_dev}
 \end{figure}
 
+
+\textbf{Parameter space noise for exploration.} Previously, we considered exploration by adding noise to the output action. Then we experimented with adding noise to the parameters of the actor network. \cite{plappert2017parameter} presents the idea of adding noise directly to the agent's parameters. The reasoning behind this is as follows. In the continuous action space, actions are sampled according to a stochastic policy. For a fixed state $s$, we will most certainly obtain a different action when that state is sampled again since action space noise is independent of the current state $s$. On the other hand, if the network parameters are perturbed at the beginning of each episode, the same action will be taken for the same state $s$. This ensures dependency of actions and state, eventually leading to consistency of outputs. We have used layer normalization between hidden layers, so that the same perturbation scale can be used across all layers. We have used $\sigma = 0.2$ as the scale for parameter space noise. Figure \ref{fig:parameter_noise_exploration} shows the default case with default noise and the default case with network parameter noise. As we can see in the plot, the average rewards are much higher with parameter noise compared to the default results.  
+
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{network_parameter_exploration}
+\includegraphics[scale=0.45]{network_parameter_exploration}
 \end{center}
 \caption{Average reward with and without network parameter noise}
 \label{fig:parameter_noise_exploration}
 \end{figure}
 
-\textbf{Parameter space noise for exploration.} Previously, we considered exploration by adding noise to the output action. Then we experimented with adding noise to the parameters of the actor network. \cite{plappert2017parameter} presents the idea of adding noise directly to the agent's parameters. The reasoning behind this is as follows. In the continuous action space, actions are sampled according to a stochastic policy. For a fixed state $s$, we will most certainly obtain a different action when that state is sampled again since action space noise is independent of the current state $s$. On the other hand, if the network parameters are perturbed at the beginning of each episode, the same action will be taken for the same state $s$. This ensures dependency of actions and state, eventually leading to consistency of outputs. We have used layer normalization between hidden layers, so that the same perturbation scale can be used across all layers. We have used $\sigma = 0.2$ as the scale for parameter space noise. Figure \ref{fig:parameter_noise_exploration} shows the default case with default noise and the default case with network parameter noise. As we can see in the plot, the average rewards are much higher with parameter noise compared to the default results.  
-
-
 \textbf{Changing network size.} We experiment with reducing the size of neural network layers for the policy and Q networks to see the impact on performance. We observe that the best achievable reward in a training run with 2-layer 64-unit networks (as opposed to the default of 2 layers with 128-unit networks) is around -175, which is noticeably lower than the -150 achieved with the default network size. This shows that increased complexity of neural networks does help to define the right actions in the cooperative navigation task. 
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{maddpg_3,4,5agents.png}
+\includegraphics[scale=0.45]{maddpg_3,4,5agents.png}
 \end{center}
 \caption{Average reward gained by each agent in environment with different number of agents and landmarks}
 \label{fig:avg_reward_multiple_agents}
@@ -320,7 +320,7 @@ We additionally look at the standard deviation of the deviation from the network
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{MADDPG_different_neighbors.png}
+\includegraphics[scale=0.45]{MADDPG_different_neighbors.png}
 \end{center}
 \caption{Average reward gained by each agent with different number of neighboring agents information}
 \label{fig:avg_reward_different_neighbors}
