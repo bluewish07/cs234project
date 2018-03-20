@@ -2,6 +2,7 @@ import os
 import sys
 from pg.multi_agent_pg import MultiAgentPG
 from maddpg.maddpg import MADDPG
+from maddpg_param_noise.maddpg import MADDPGWithNoise
 from pg.config import config
 from make_env import  make_env
 import numpy as np
@@ -21,5 +22,6 @@ if __name__ == '__main__':
   # train model
   #model = MultiAgentPG(env)
   model = MADDPG(env)
+  # model = MADDPGWithNoise(env)
 
   model.run()
